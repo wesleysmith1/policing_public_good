@@ -6,8 +6,12 @@
     {{ include_sibling 'MainStyle.html' }}
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.0.4/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.0.4/dist/Draggable.min.js"></script>
 
     <div id="app">${message}</div>
+
+    <div id="draggable">draggable</div>
 
     <script>
         const { createApp } = Vue
@@ -20,7 +24,18 @@
                 return {
                     message: 'Hello Vue!'
                 }
-            }
+            }, 
+            mounted() {
+                let drag = Draggable.create("#draggable", {
+                    minimumMovement: .01,
+                    onDragStart: function () {
+                        
+                    },
+                    onDragEnd: function () {
+                        
+                    },
+                });
+            },
         }).mount('#app')
     </script>
 

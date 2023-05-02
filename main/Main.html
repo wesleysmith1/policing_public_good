@@ -1,0 +1,30 @@
+{{ block title }}
+    Main
+{{ endblock }}
+{{ block content }}
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <div id="app">${message}</div>
+
+    <script>
+        const { createApp } = Vue
+      
+        createApp({
+            compilerOptions: {
+                delimiters: ["${", "}"]
+            },
+            data() {
+                return {
+                    message: 'Hello Vue!'
+                }
+            }
+        }).mount('#app')
+    </script>
+
+
+    <script>
+        console.log(Vue)
+    </script>
+
+{{ endblock }}

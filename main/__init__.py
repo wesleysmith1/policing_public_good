@@ -8,7 +8,7 @@ Your app description
 
 class C(BaseConstants):
     NAME_IN_URL = 'main'
-    PLAYERS_PER_GROUP = None
+    PLAYERS_PER_GROUP = 5
     NUM_ROUNDS = 1
 
 
@@ -25,7 +25,7 @@ class Player(BasePlayer):
 
 
 # PAGES
-class MyPage(Page):
+class Main(Page):
     pass
 
 
@@ -37,4 +37,4 @@ class Results(Page):
     pass
 
 
-page_sequence = [MyPage, ResultsWaitPage, Results]
+page_sequence = [Main, ResultsWaitPage, Results]

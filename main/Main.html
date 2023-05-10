@@ -12,7 +12,7 @@
     <script src="{% static 'global/js/grain-img.js' %}"></script>
     <script src="{% static 'global/js/probability-bar.js' %}"></script>
     <script src="{% static 'global/js/officer.js' %}"></script>
-    <script src="{% static 'global/js/civilian.js' %}"></script>
+    <script src="{% static 'global/js/civilian-harvest.js' %}"></script>
     <script src="{% static 'global/js/game-status.js' %}"></script>
 
     <link rel="stylesheet" type="text/css" href="{% static 'global/styles/game-status.css' %}">
@@ -45,7 +45,14 @@
                 @defense-token-reset="defenseTokenReset">
             </officer-game-component>
             <div id="harvestGame" class="game-container" v-else>
-                <civilian-game-component></civilian-game-component>
+                <civilian-harvest-component
+                    v-if="harvestScreen"
+                    class="harvest"
+                    :harvest-status="harvestStatus"
+                    :income="player.income"
+                    @harvest-update="harvestUpdate">
+                </civilian-harvest-component>
+                <div v-show="!isOfficer" @click='toggle' class='toggle'>${ harvestScreen ? 'Steal' : 'Harvest'}</div>
             </div>
             <game-status-component
                 :civilians-per-group="civiliansPerGroup"
@@ -80,7 +87,7 @@
         createApp({
             components: {
                 'officer-game-component': officerGameComponent,
-                'civilian-game-component': civilianGameComponent,
+                'civilian-harvest-component': civilianHarvestComponent,
                 'game-status-component': gameStatusComponent,
                 'grain-image-component': grainImageComponent,
                 'probability-bar-component': probabilityBarComponent,
@@ -91,7 +98,7 @@
             data() {
                 return {
                     roundstarted: false,
-                    isOfficer: true,
+                    isOfficer: js_vars.player.idInGroup == 1,
                     player: js_vars.player,
                     x: {{player.x}},
                     y: {{player.y}},
@@ -146,14 +153,66 @@
                 }
             }, 
             created() {
+                this.configureCivilianMaps()
+                this.configureOfficerTokens()
             },
             methods: {
+                positionStealToken: function() {
+                    if (this.harvestScreen) // update this so we dont check multiple times
+                        return;
+                    this.$nextTick(() => {
+                         this.$refs.stealcomponent.setStealLocation();
+                    });
+                },
+                stealActive: function() {
+                    // screen was toggled to steal
+                    // this.gameUpdate({
+                    //     'toggle': {harvest: false},
+                    // });
+                },
+                toggle: function() {
+                    if (this.harvestScreen) { // toggle to steal
+                        // update local harvest status
+                        this.harvestStatus = 0;
+                        // send toggle event to db
+                        this.stealActive();
+
+                        this.harvestScreen = !this.harvestScreen;
+
+                        this.positionStealToken();
+
+                    } else { // toggle to harvest
+
+                        // reset harvest status and send toggle event to db
+                        this.harvestScreen = !this.harvestScreen;
+
+                        // cancel the steal token timeout
+                        this.$refs.stealcomponent.cancelTimeout()
+
+                        this.harvestActive();
+                    }
+                },
+                harvestActive: function() {
+                    this.stealLocation = Math.floor(Math.random() * 20)+1;
+                    // this.gameUpdate({
+                    //     'toggle': {harvest: true, steal_reset: this.stealLocation},
+                    // });
+                },
                 configureCivilianMaps: function() {
                     // player maps
                     this.maps = [];
                     for (let i = 1; i < this.playersPerGroup; i++) {
                         this.activeStealMaps[i] = 0;
                         this.maps.push(i);
+                    }
+                },
+                configureOfficerTokens: function() {
+                    if (this.isOfficer) {
+                        // this.officerTokens = JSON.parse(dtokens);
+                        this.officerTokens.forEach((t) => {
+                            t.slot = t.number;
+                            t.map = 0;
+                        });
                     }
                 },
                 updateProbabilityReprimand: function(value) {
@@ -178,7 +237,53 @@
                     // this.gameUpdate({
                     //     'investigation_update': item,
                     // });
-                }
+                },
+                locationDrag: function(location) {
+                    // this.gameUpdate({
+                    //     'steal_token_drag': location,
+                    // });
+                },
+                locationUpdate: function (location) {
+                    // this.gameUpdate({
+                    //     'steal_token_update': location,
+                    // });
+                },
+                locationTokenReset: function(x) {
+                    // this function informs the api that the token has reset
+
+                    if (x === this.stealLocation) {
+                        // watch won't be triggered here so we need to trigger the function manually
+                        this.$refs.stealcomponent.setStealLocation();
+                    }
+                    this.stealLocation = x
+                    // this.gameUpdate({
+                    //     'steal_token_reset': {'steal_location': x,},
+                    // });
+                },
+                locationTokenTimeout: function(x) {
+                    this.stealLocation = x;
+                    if (x === this.stealLocation) {
+                        // watch won't be triggered here so we need to trigger the function manually
+                        this.$refs.stealcomponent.setStealLocation();
+                    }
+                    // this.gameUpdate({
+                    //     'steal_token_timeout': {'steal_location': x,}
+                    // })
+                },
+                harvestUpdate: function (status) {
+                    this.harvestStatus++;
+
+                    // this.gameUpdate({
+                    //     'harvest': {status: this.harvestStatus},
+                    // });
+
+                    // reset harvest cycle
+                    if (this.harvestStatus === 4) {
+                        this.harvestStatus = 0;
+                        // reset harvest items
+                        gsap.to('#seed, #water, #plow, #harvest', 0, {autoAlpha: 1});
+                    }
+                },
             },
         }).mount('#app')
     </script>

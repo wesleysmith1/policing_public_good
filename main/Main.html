@@ -14,6 +14,7 @@
     <script src="{% static 'global/js/officer.js' %}"></script>
     <script src="{% static 'global/js/civilian-harvest.js' %}"></script>
     <script src="{% static 'global/js/game-status.js' %}"></script>
+    <script src="{% static 'global/js/civilian-steal.js' %}"></script>
 
     <link rel="stylesheet" type="text/css" href="{% static 'global/styles/game-status.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'global/styles/harvest.css' %}">
@@ -52,6 +53,26 @@
                     :income="player.income"
                     @harvest-update="harvestUpdate">
                 </civilian-harvest-component>
+                <civilian-steal-component
+                    v-show="!harvestScreen"
+                    ref="stealcomponent"
+                    :maps="maps"
+                    :group-player-id="player.idInGroup"
+                    :player-location="playerLocation"
+                    :investigation-count="investigationCount"
+                    :defend-token-total="defendTokenTotal"
+                    :map-size="mapSize"
+                    :steal-location="stealLocation"
+                    :active-steal="activeSteal"
+                    :active-steal-maps="activeStealMaps"
+                    :fine-notification="fineNotification"
+                    :steal-timeout-milli="stealTimeoutMilli"
+                    :steal-token-slots="stealTokenSlots"
+                    @location-drag="locationDrag"
+                    @location-update="locationUpdate"
+                    @location-token-reset="locationTokenReset"
+                    @location-token-timeout="locationTokenTimeout">
+                </civilian-steal-component>
                 <div v-show="!isOfficer" @click='toggle' class='toggle'>${ harvestScreen ? 'Steal' : 'Harvest'}</div>
             </div>
             <game-status-component
@@ -91,6 +112,7 @@
                 'game-status-component': gameStatusComponent,
                 'grain-image-component': grainImageComponent,
                 'probability-bar-component': probabilityBarComponent,
+                'civilian-steal-component': civilianStealComponent,
             },
             compilerOptions: {
                 delimiters: ["${", "}"]
@@ -103,7 +125,7 @@
                     x: {{player.x}},
                     y: {{player.y}},
                     playerLocation: {},
-                    stealLocation: -1,
+                    stealLocation: {{player.steal_start}},
                     maps: [],
                     balance: 0,
                     balanceColor: 'black',

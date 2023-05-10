@@ -45,10 +45,8 @@ let officerGameComponent = {
                 onDragStart: function () {
                     let token = that.mutableDefendTokens[i]
                     that.tokenDragStart(this, token);
-                    console.log(token)
                     // update map as dragging and adjust which tokens are active
                     if (token.map === 0) {
-                        console.log("token dragged from start location", token.slot-1)
                         that.activeCount++;
                         that.defendSlotStatuses[token.slot-1] = false;
                         token.slot = 0;
@@ -119,8 +117,6 @@ let officerGameComponent = {
         getSlot: function() {
             // calculate where to send
             let randSlot = this.randomLocation();
-
-            console.log('hi')
 
             let i = 0;
             let count = 0;

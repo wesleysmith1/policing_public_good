@@ -1,5 +1,6 @@
 from otree.api import *
 import operator
+from random import randrange 
 
 from main.income_distributions import IncomeDistributions
 
@@ -95,6 +96,8 @@ class Group(BaseGroup):
 
     game_status = models.IntegerField(choices=GameStatus.CHOICES, initial=GameStatus.SYNC)
 
+def randomize_location():
+    return randrange(C.steal_token_slots)+1
 
 class Player(BasePlayer):
     x = models.FloatField(initial=0)
@@ -106,7 +109,7 @@ class Player(BasePlayer):
     harvest_status = models.IntegerField(initial=0)
     harvest_screen = models.BooleanField(initial=True)
     income = models.IntegerField(initial=40)
-    steal_start = models.IntegerField(initial=0)
+    steal_start = models.IntegerField(initial=randomize_location)
     steal_count = models.IntegerField(initial=0)
     victim_count = models.IntegerField(initial=0)
     steal_total = models.FloatField(initial=0)

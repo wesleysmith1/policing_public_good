@@ -1,0 +1,55 @@
+.investigation-data-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    box-sizing: border-box;
+    padding: 0px 50px 0 50px;
+    width: 100%;
+}
+.culprit {
+    height: 100%;
+    background: rgba(240,189,39,.5);
+    opacity: .5;
+}
+.innocent {
+    height: 100%;
+    background: rgba(240,189,39,.5);
+    opacity: .5;
+}
+.officer-units {
+    display: flex;
+    justify-content: space-between;
+    border: 1px solid black;
+    padding: 5px;
+}
+.officer-unit {
+    opacity: .25;
+    background: #001485;
+}
+#officer-investigation-container {
+    width: 100%;
+    height: 120px;
+    background: rgba(240,189,39,.5);
+    border: 1px solid black;
+    opacity: .5;
+    z-index: -1;
+}
+
+.intersection-label {
+    width: 100px;
+    height: 30px;
+    text-align: center;
+    color: black;
+    position: absolute;
+    left: 0;
+    top: 0;
+
+    font-size: 30px;
+
+    visibility: hidden;
+    z-index: 900;
+}
+
+.officer-units .defend-location {
+}

@@ -9,39 +9,178 @@
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.0.4/dist/gsap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.0.4/dist/Draggable.min.js"></script>
 
-    <div id="app">${message}</div>
+    <script src="{% static 'global/js/grain-img.js' %}"></script>
+    <script src="{% static 'global/js/probability-bar.js' %}"></script>
+    <script src="{% static 'global/js/officer.js' %}"></script>
+    <script src="{% static 'global/js/civilian.js' %}"></script>
+    <script src="{% static 'global/js/game-status.js' %}"></script>
 
-    <div id="draggable">draggable</div>
+    <link rel="stylesheet" type="text/css" href="{% static 'global/styles/game-status.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'global/styles/harvest.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'global/styles/steal.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'global/styles/officer.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'global/styles/main.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'global/styles/modal.css' %}">
+
+    <div id="app">
+
+        <div class="outer-container">
+            <officer-game-component
+                id="officerGame"
+                class="game-container"
+                ref="officercomponent"
+                v-if="isOfficer"
+                :maps="maps"
+                :initial-defend-tokens="officerTokens"
+                :officer-income="player.income"
+                :investigation-count="investigationCount"
+                :defend-token-total="defendTokenTotal"
+                :map-size="mapSize"
+                :defend-token-size="defendTokenSize"
+                :probability-reprimand="probabilityReprimand"
+                :reprimand-amount="reprimandAmount"
+                @token-drag="tokenDrag"
+                @token-update="tokenUpdate"
+                @investigation-update="investigationUpdate"
+                @defense-token-reset="defenseTokenReset">
+            </officer-game-component>
+            <div id="harvestGame" class="game-container" v-else>
+                <civilian-game-component></civilian-game-component>
+            </div>
+            <game-status-component
+                :civilians-per-group="civiliansPerGroup"
+                :balance="balance"
+                :balance-color="balanceColor"
+                :steal-notification="stealNotification"
+                :intercepts-count="interceptsCount"
+                :fines-count="finesCount"
+                :reprimands-count="reprimandsCount"
+                :investigation-count="investigationCount"
+                :defend-token-total="defendTokenTotal"
+                :is-officer="isOfficer"
+                :a-max="aMax"
+                :beta="beta"
+                :review-probability="reviewProbability"
+                @update-probability-reprimand="updateProbabilityReprimand"
+            ></game-status-component>
+        </div>
+
+    </div>
 
     <script>
         const { createApp } = Vue
+
+        const gameStatuses = {
+            SYNC: 0,
+            INFO: 1,
+            ACTIVE: 2,
+            RESULTS: 3,
+        }
       
         createApp({
+            components: {
+                'officer-game-component': officerGameComponent,
+                'civilian-game-component': civilianGameComponent,
+                'game-status-component': gameStatusComponent,
+                'grain-image-component': grainImageComponent,
+                'probability-bar-component': probabilityBarComponent,
+            },
             compilerOptions: {
                 delimiters: ["${", "}"]
             },
             data() {
                 return {
-                    message: 'Hello Vue!'
+                    roundstarted: false,
+                    isOfficer: true,
+                    player: js_vars.player,
+                    x: {{player.x}},
+                    y: {{player.y}},
+                    playerLocation: {},
+                    stealLocation: -1,
+                    maps: [],
+                    balance: 0,
+                    balanceColor: 'black',
+
+                    roi: 0,
+                    harvestItems: [],
+                    harvestStatus: 0,
+                    harvestScreen: true,
+                    officerTokens: js_vars.defend_tokens,
+                    investigationCount: 0,
+                    stealNotification: "",
+                    activeSteal: 0,
+                    activeStealMaps: {},
+                    fineNotification: "",
+                    tutorial: '{{ tutorial }}' === 'True',
+                    interceptsCount: 0,
+                    finesCount: 0,
+                    reprimandsCount: 0,
+                    probabilityReprimand: 0,
+                    balanceInterval: null,
+
+                    civiliansPerGroup: 5,
+                    resultsObj: {},
+                    roundOver: false,
+
+                    hostSyncPoll: null, // an interval for host to check if all players are ready
+                    validationInterval: null,
+
+                    tutorialDuration: {{C.tutorial_duration_seconds}},
+                    infoModalDuration: {{C.start_modal_seconds}} * 1000,
+                    resultsModalDuration: {{C.results_modal_seconds}} * 1000,
+                    gameDuration: {{C.game_duration_seconds}} * 1000,
+
+                    aMax: {{C.a_max}},
+                    beta: {{C.beta}},
+                    reviewProbability: {{C.officer_review_probability}},
+                    mapSize: {{C.civilian_map_size}},
+                    defendTokenSize: {{C.defend_token_size}},
+                    defendTokenTotal: {{C.defend_token_total}},
+                    civilianFine: {{C.civilian_fine_amount }},
+                    officerReprimandAmount: {{C.officer_reprimand_amount}},
+                    playersPerGroup: {{C.PLAYERS_PER_GROUP}},
+                    stealTimeoutMilli: {{C.steal_timeout_milli}},
+                    stealTokenSlots: {{C.steal_token_slots}},
+                    reprimandAmount: {{C.officer_reprimand_amount}}
+
                 }
             }, 
-            mounted() {
-                let drag = Draggable.create("#draggable", {
-                    minimumMovement: .01,
-                    onDragStart: function () {
-                        
-                    },
-                    onDragEnd: function () {
-                        
-                    },
-                });
+            created() {
+            },
+            methods: {
+                configureCivilianMaps: function() {
+                    // player maps
+                    this.maps = [];
+                    for (let i = 1; i < this.playersPerGroup; i++) {
+                        this.activeStealMaps[i] = 0;
+                        this.maps.push(i);
+                    }
+                },
+                updateProbabilityReprimand: function(value) {
+                    this.probabilityReprimand = value
+                },
+                defenseTokenReset: function(token) {
+                    // this.gameUpdate({
+                    //     'defend_token_reset': {'number': token.number, 'slot': token.slot},
+                    // });
+                },
+                tokenDrag: function(token) {
+                    // this.gameUpdate({
+                    //     'defend_token_drag': token,
+                    // });
+                },
+                tokenUpdate: function (token) {
+                    // this.gameUpdate({
+                    //     'defend_token_update': token,
+                    // });
+                },
+                investigationUpdate: function(token) {
+                    // this.gameUpdate({
+                    //     'investigation_update': item,
+                    // });
+                }
             },
         }).mount('#app')
-    </script>
-
-
-    <script>
-        console.log(Vue)
     </script>
 
 {{ endblock }}

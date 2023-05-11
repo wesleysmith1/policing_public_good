@@ -6,7 +6,17 @@ SESSION_CONFIGS = [
         name='main',
         display_name="delegated_punishment",
         app_sequence=['main'],
-        num_demo_participants=5,
+        num_demo_participants=6,
+        showup_payment=7,
+        grain_conversion=.1,
+        participant_endowment=10,
+        civilian_income_low_to_high=True,
+        civilian_income_config=1,
+        tutorial_civilian_income=40,
+        tutorial_officer_bonus=260,
+        session_identifier=0,
+        balance_update_rate=250,
+        skip_to_round=1,
     )
 ]
 
@@ -19,8 +29,8 @@ SESSION_CONFIG_DEFAULTS = dict(
     real_world_currency_per_point=1.00, participation_fee=0.00, doc=""
 )
 
-PARTICIPANT_FIELDS = []
-SESSION_FIELDS = []
+PARTICIPANT_FIELDS = ['officer_bonus', 'group_id', 'balances', 'steal_start']
+SESSION_FIELDS = ['session_start', 'session_date',]
 
 # ISO-639 code
 # for example: de, fr, ja, ko, zh-hans

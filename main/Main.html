@@ -9,39 +9,315 @@
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.0.4/dist/gsap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.0.4/dist/Draggable.min.js"></script>
 
-    <div id="app">${message}</div>
+    <script src="{% static 'global/js/grain-img.js' %}"></script>
+    <script src="{% static 'global/js/probability-bar.js' %}"></script>
+    <script src="{% static 'global/js/officer.js' %}"></script>
+    <script src="{% static 'global/js/civilian-harvest.js' %}"></script>
+    <script src="{% static 'global/js/game-status.js' %}"></script>
+    <script src="{% static 'global/js/civilian-steal.js' %}"></script>
 
-    <div id="draggable">draggable</div>
+    <link rel="stylesheet" type="text/css" href="{% static 'global/styles/game-status.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'global/styles/harvest.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'global/styles/steal.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'global/styles/officer.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'global/styles/main.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'global/styles/modal.css' %}">
+
+    <div id="app">
+
+        <div class="outer-container">
+            <officer-game-component
+                id="officerGame"
+                class="game-container"
+                ref="officercomponent"
+                v-if="isOfficer"
+                :maps="maps"
+                :initial-defend-tokens="officerTokens"
+                :officer-income="player.income"
+                :investigation-count="investigationCount"
+                :defend-token-total="defendTokenTotal"
+                :map-size="mapSize"
+                :defend-token-size="defendTokenSize"
+                :probability-reprimand="probabilityReprimand"
+                :reprimand-amount="reprimandAmount"
+                @token-drag="tokenDrag"
+                @token-update="tokenUpdate"
+                @investigation-update="investigationUpdate"
+                @defense-token-reset="defenseTokenReset">
+            </officer-game-component>
+            <div id="harvestGame" class="game-container" v-else>
+                <civilian-harvest-component
+                    v-if="harvestScreen"
+                    class="harvest"
+                    :harvest-status="harvestStatus"
+                    :income="player.income"
+                    @harvest-update="harvestUpdate">
+                </civilian-harvest-component>
+                <civilian-steal-component
+                    v-show="!harvestScreen"
+                    ref="stealcomponent"
+                    :maps="maps"
+                    :group-player-id="player.idInGroup"
+                    :player-location="playerLocation"
+                    :investigation-count="investigationCount"
+                    :defend-token-total="defendTokenTotal"
+                    :map-size="mapSize"
+                    :steal-location="stealLocation"
+                    :active-steal="activeSteal"
+                    :active-steal-maps="activeStealMaps"
+                    :fine-notification="fineNotification"
+                    :steal-timeout-milli="stealTimeoutMilli"
+                    :steal-token-slots="stealTokenSlots"
+                    @location-drag="locationDrag"
+                    @location-update="locationUpdate"
+                    @location-token-reset="locationTokenReset"
+                    @location-token-timeout="locationTokenTimeout">
+                </civilian-steal-component>
+                <div v-show="!isOfficer" @click='toggle' class='toggle'>${ harvestScreen ? 'Steal' : 'Harvest'}</div>
+            </div>
+            <game-status-component
+                :civilians-per-group="civiliansPerGroup"
+                :balance="balance"
+                :balance-color="balanceColor"
+                :steal-notification="stealNotification"
+                :intercepts-count="interceptsCount"
+                :fines-count="finesCount"
+                :reprimands-count="reprimandsCount"
+                :investigation-count="investigationCount"
+                :defend-token-total="defendTokenTotal"
+                :is-officer="isOfficer"
+                :a-max="aMax"
+                :beta="beta"
+                :review-probability="reviewProbability"
+                @update-probability-reprimand="updateProbabilityReprimand"
+            ></game-status-component>
+        </div>
+
+    </div>
 
     <script>
         const { createApp } = Vue
+
+        const gameStatuses = {
+            SYNC: 0,
+            INFO: 1,
+            ACTIVE: 2,
+            RESULTS: 3,
+        }
       
         createApp({
+            components: {
+                'officer-game-component': officerGameComponent,
+                'civilian-harvest-component': civilianHarvestComponent,
+                'game-status-component': gameStatusComponent,
+                'grain-image-component': grainImageComponent,
+                'probability-bar-component': probabilityBarComponent,
+                'civilian-steal-component': civilianStealComponent,
+            },
             compilerOptions: {
                 delimiters: ["${", "}"]
             },
             data() {
                 return {
-                    message: 'Hello Vue!'
+                    roundstarted: false,
+                    isOfficer: js_vars.player.idInGroup == 1,
+                    player: js_vars.player,
+                    x: {{player.x}},
+                    y: {{player.y}},
+                    playerLocation: {},
+                    stealLocation: {{player.steal_start}},
+                    maps: [],
+                    balance: 0,
+                    balanceColor: 'black',
+
+                    roi: 0,
+                    harvestItems: [],
+                    harvestStatus: 0,
+                    harvestScreen: true,
+                    officerTokens: js_vars.defend_tokens,
+                    investigationCount: 0,
+                    stealNotification: "",
+                    activeSteal: 0,
+                    activeStealMaps: {},
+                    fineNotification: "",
+                    tutorial: '{{ tutorial }}' === 'True',
+                    interceptsCount: 0,
+                    finesCount: 0,
+                    reprimandsCount: 0,
+                    probabilityReprimand: 0,
+                    balanceInterval: null,
+
+                    civiliansPerGroup: 5,
+                    resultsObj: {},
+                    roundOver: false,
+
+                    hostSyncPoll: null, // an interval for host to check if all players are ready
+                    validationInterval: null,
+
+                    tutorialDuration: {{C.tutorial_duration_seconds}},
+                    infoModalDuration: {{C.start_modal_seconds}} * 1000,
+                    resultsModalDuration: {{C.results_modal_seconds}} * 1000,
+                    gameDuration: {{C.game_duration_seconds}} * 1000,
+
+                    aMax: {{C.a_max}},
+                    beta: {{C.beta}},
+                    reviewProbability: {{C.officer_review_probability}},
+                    mapSize: {{C.civilian_map_size}},
+                    defendTokenSize: {{C.defend_token_size}},
+                    defendTokenTotal: {{C.defend_token_total}},
+                    civilianFine: {{C.civilian_fine_amount }},
+                    officerReprimandAmount: {{C.officer_reprimand_amount}},
+                    playersPerGroup: {{C.PLAYERS_PER_GROUP}},
+                    stealTimeoutMilli: {{C.steal_timeout_milli}},
+                    stealTokenSlots: {{C.steal_token_slots}},
+                    reprimandAmount: {{C.officer_reprimand_amount}}
+
                 }
             }, 
-            mounted() {
-                let drag = Draggable.create("#draggable", {
-                    minimumMovement: .01,
-                    onDragStart: function () {
-                        
-                    },
-                    onDragEnd: function () {
-                        
-                    },
-                });
+            created() {
+                this.configureCivilianMaps()
+                this.configureOfficerTokens()
+            },
+            methods: {
+                submit: function() {
+                    // submit the hidden form to advance to next page
+                    document.getElementById('form').submit();
+                },
+                positionStealToken: function() {
+                    if (this.harvestScreen) // update this so we dont check multiple times
+                        return;
+                    this.$nextTick(() => {
+                         this.$refs.stealcomponent.setStealLocation();
+                    });
+                },
+                stealActive: function() {
+                    // screen was toggled to steal
+                    // this.gameUpdate({
+                    //     'toggle': {harvest: false},
+                    // });
+                },
+                toggle: function() {
+                    if (this.harvestScreen) { // toggle to steal
+                        // update local harvest status
+                        this.harvestStatus = 0;
+                        // send toggle event to db
+                        this.stealActive();
+
+                        this.harvestScreen = !this.harvestScreen;
+
+                        this.positionStealToken();
+
+                    } else { // toggle to harvest
+
+                        // reset harvest status and send toggle event to db
+                        this.harvestScreen = !this.harvestScreen;
+
+                        // cancel the steal token timeout
+                        this.$refs.stealcomponent.cancelTimeout()
+
+                        this.harvestActive();
+                    }
+                },
+                harvestActive: function() {
+                    this.stealLocation = Math.floor(Math.random() * 20)+1;
+                    // this.gameUpdate({
+                    //     'toggle': {harvest: true, steal_reset: this.stealLocation},
+                    // });
+                },
+                configureCivilianMaps: function() {
+                    // player maps
+                    this.maps = [];
+                    for (let i = 1; i < this.playersPerGroup; i++) {
+                        this.activeStealMaps[i] = 0;
+                        this.maps.push(i);
+                    }
+                },
+                configureOfficerTokens: function() {
+                    if (this.isOfficer) {
+                        // this.officerTokens = JSON.parse(dtokens);
+                        this.officerTokens.forEach((t) => {
+                            t.slot = t.number;
+                            t.map = 0;
+                        });
+                    }
+                },
+                updateProbabilityReprimand: function(value) {
+                    this.probabilityReprimand = value
+                },
+                defenseTokenReset: function(token) {
+                    // this.gameUpdate({
+                    //     'defend_token_reset': {'number': token.number, 'slot': token.slot},
+                    // });
+                },
+                tokenDrag: function(token) {
+                    // this.gameUpdate({
+                    //     'defend_token_drag': token,
+                    // });
+                },
+                tokenUpdate: function (token) {
+                    // this.gameUpdate({
+                    //     'defend_token_update': token,
+                    // });
+                },
+                investigationUpdate: function(token) {
+                    // this.gameUpdate({
+                    //     'investigation_update': item,
+                    // });
+                },
+                locationDrag: function(location) {
+                    // this.gameUpdate({
+                    //     'steal_token_drag': location,
+                    // });
+                },
+                locationUpdate: function (location) {
+                    // this.gameUpdate({
+                    //     'steal_token_update': location,
+                    // });
+                },
+                locationTokenReset: function(x) {
+                    // this function informs the api that the token has reset
+
+                    if (x === this.stealLocation) {
+                        // watch won't be triggered here so we need to trigger the function manually
+                        this.$refs.stealcomponent.setStealLocation();
+                    }
+                    this.stealLocation = x
+                    // this.gameUpdate({
+                    //     'steal_token_reset': {'steal_location': x,},
+                    // });
+                },
+                locationTokenTimeout: function(x) {
+                    this.stealLocation = x;
+                    if (x === this.stealLocation) {
+                        // watch won't be triggered here so we need to trigger the function manually
+                        this.$refs.stealcomponent.setStealLocation();
+                    }
+                    // this.gameUpdate({
+                    //     'steal_token_timeout': {'steal_location': x,}
+                    // })
+                },
+                harvestUpdate: function (status) {
+                    this.harvestStatus++;
+
+                    // this.gameUpdate({
+                    //     'harvest': {status: this.harvestStatus},
+                    // });
+
+                    // reset harvest cycle
+                    if (this.harvestStatus === 4) {
+                        this.harvestStatus = 0;
+                        // reset harvest items
+                        gsap.to('#seed, #water, #plow, #harvest', 0, {autoAlpha: 1});
+                    }
+                },
+                updateOfficerHistory: function(officerHistory) {
+                    // update officer_history
+                    this.interceptsCount = officerHistory.intercept;
+                    this.finesCount = officerHistory.fine;
+                    this.reprimandsCount = officerHistory.reprimand;
+                },
             },
         }).mount('#app')
-    </script>
-
-
-    <script>
-        console.log(Vue)
     </script>
 
 {{ endblock }}

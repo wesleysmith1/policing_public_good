@@ -1,0 +1,54 @@
+.harvest-items {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+    background: skyblue;
+
+    height: 100%;
+}
+.harvest-item {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: white;
+    border: 1px solid black;
+    width: 150px;
+    height: 150px;
+}
+.harvest-item-image {
+    width: 50%;
+    height: 50%
+}
+.harvest-complete-items {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    background: green;
+
+    text-align: center;
+    height: 100%;
+    width: 100%;
+}
+.harvest-complete-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+.harvest-complete-item {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100px;
+    width: 100px;
+    background: green;
+}
+.harvest-earnings {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+}

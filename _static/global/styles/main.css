@@ -1,0 +1,172 @@
+body {
+    margin: 0;
+    /* background: black; */
+    background: #eeeeee;
+
+    -webkit-touch-callout: none; /* iOS Safari */
+        -webkit-user-select: none; /* Safari */
+             -khtml-user-select: none; /* Konqueror HTML */
+                   -moz-user-select: none; /* Old versions of Firefox */
+                        -ms-user-select: none; /* Internet Explorer/Edge */
+                            user-select: none; /* Non-prefixed version, currently
+                                                supported by Chrome, Opera and Firefox */
+}
+#app {
+}
+.outer-container {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+}
+.game-container {
+    flex: 0 0 70%;
+    box-sizing: border-box;
+
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+.toggle {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    cursor: pointer;
+
+    min-width: 100px;
+    background: black;
+    color: white;
+    border: 2px solid black;
+    padding: 6px 10px 10px 10px;
+    text-align: center;
+    border-radius: 25px;
+    font-size: 20px;
+}
+.upper {
+    flex: 1;
+}
+.lower {
+    flex: 1;
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.game {
+    width:  100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+.steal {
+    height: 100%;
+}
+.harvest {
+    height: 100%;
+}
+.locations {
+    display: flex;
+    flex-direction: row;
+}
+.locations span button {
+    margin: 20px;
+    padding: 20px;
+}
+.occupied{
+    background-color:red;
+}
+.messageBox {
+    overflow-y: hidden;
+    height: 90%;
+    width: 100%;
+    /*border: 1px solid black;*/
+}
+
+.upper-harvest {
+    height: 50%;
+    border-bottom: 1px solid black;
+    box-sizing: border-box;
+}
+
+/*intersection indicator*/
+.indicator {
+    position: absolute;
+    left: 0;
+    top: 0;
+    visibility: hidden;
+    z-index: 900;
+}
+.title {
+    text-align: center;
+    font-size: 45px;
+    margin-bottom: 25px;
+    margin-top: 25px;
+}
+
+.title-small {
+    text-align: center;
+    font-size: 35px;
+}
+
+/*map maps*/
+.map {
+    position: relative;
+    border: 1px solid black;
+}
+
+.maps-container {
+    display: flex;
+    justify-content: space-around;
+}
+
+.map-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.map-label {
+    font-size: 20px;
+    text-align: center;
+}
+
+.map.other {
+    background: white;
+}
+
+.token-container {
+    margin: 25px;
+}
+
+/*officer below*/
+
+.officer-info-container {
+    width: 600px;
+    margin: auto;
+    padding: 10px;
+}
+
+.data-row .left {
+    float: left;
+}
+
+.data-row .right {
+    float: right;
+}
+.number-right-align {
+    width: 125px;
+    text-align: left;
+}
+
+.green-txt {
+    color: green;
+}
+
+.red-txt {
+    color: red;
+}
+
+.bold-txt {
+    font-weight: bold;
+}
+

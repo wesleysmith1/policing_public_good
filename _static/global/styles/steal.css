@@ -1,0 +1,21 @@
+.steal-locations-container {
+    display: flex;
+    justify-content: space-between;
+
+    border: 1px solid black;
+    padding: 20px;
+}
+.steal-locations-container .steal-location {
+    height: 21px;
+    width: 21px;
+}
+#home-fine-notification {
+    text-align: center;
+    font-size: 50px;
+    padding-top: 40px;
+}
+
+.steal-token-line {
+    stroke:red;
+    stroke-width:3;
+}

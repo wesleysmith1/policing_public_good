@@ -157,7 +157,6 @@ let officerGameComponent = {
     template:
         `
         <div ref="officerGame">
-            {{defendSlotStatuses}}
             <div class="upper">      
             <div class='title'>Civilian Maps</div> 
             <div class="maps-container">

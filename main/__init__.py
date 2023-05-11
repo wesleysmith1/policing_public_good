@@ -1,6 +1,8 @@
 from otree.api import *
 import operator
-from random import randrange 
+from random import randrange
+import json
+import time, datetime
 
 from main.income_distributions import IncomeDistributions
 
@@ -40,7 +42,10 @@ class C(BaseConstants):
     defend_token_size = 68 * 1.5
     civilian_map_size = 200 * 1.5
 
-    """Probability innocent and guilty are calculated when the number of investigation tokens is >= this number"""
+    """
+    Probability innocent and guilty are calculated when the number of 
+    investigation tokens is >= this number
+    """
     a_max = 6
     """Guilty probability when """
     beta = .9
@@ -59,8 +64,8 @@ class C(BaseConstants):
     steal_timeout_milli = 1000
 
     """
-    Steal tokens positions defines the number of slots inside the 'steal home' rectangle. Steal tokens can be loaded or 
-    reset to any of the slots 
+    Steal tokens positions defines the number of slots inside the 'steal home' rectangle. 
+    Steal tokens can be loaded or reset to any of the slots 
     """
     steal_token_slots = 20
 
@@ -96,8 +101,11 @@ class Group(BaseGroup):
 
     game_status = models.IntegerField(choices=GameStatus.CHOICES, initial=GameStatus.SYNC)
 
+
 def randomize_location():
+    """return a random location for civilian steal token"""
     return randrange(C.steal_token_slots)+1
+
 
 class Player(BasePlayer):
     x = models.FloatField(initial=0)
@@ -147,7 +155,11 @@ class GameData(ExtraModel):
 
 # FUNCTIONS
 def creating_session(subsession: Subsession):
-    import time, datetime
+    """
+    Initialie balances and incomes for officers and players for tutorial, practice, 
+    and all other rounds.
+    Initialize session variables like date and relative group id
+    """
 
     # get time in miliseconds
     time_now = time.time()
@@ -155,61 +167,50 @@ def creating_session(subsession: Subsession):
     subsession.session.vars['session_start'] = time_now
     subsession.session.vars['session_date'] = datetime.datetime.today().strftime('%Y%m%d')
 
+    # get configurations from settings.py
     low_to_high = subsession.session.config['civilian_income_low_to_high']
     income_config = subsession.session.config['civilian_income_config']
 
-    round_incomes = IncomeDistributions.get_group_income_distribution(income_config, low_to_high, subsession.round_number)
+    round_incomes = IncomeDistributions.get_group_income_distribution(
+        income_config, low_to_high, subsession.round_number)
 
     # this code is the terrible way that officer income is determined for session
     if subsession.round_number == 1:
-        index = 0
-        for group in subsession.get_groups():
-            officer_bonus = C.officer_incomes[index]
+        for index, group in enumerate(subsession.get_groups()):
             officer = group.get_player_by_id(1)
-            officer.income = officer_bonus
-            officer.participant.vars['officer_bonus'] = officer_bonus
+            officer.participant.vars['officer_bonus'] = officer.income = C.officer_incomes[index]
 
-            # save group id
+            # save group id relative to session, not all groups in database
             officer.participant.vars['group_id'] = index+1
 
-            index += 1
-
             for p in group.get_players():
-                if p.id_in_group > 1:
+                if not p.is_officer():
                     p.income = subsession.session.config['tutorial_civilian_income']
 
     for group in subsession.get_groups():
         for p in group.get_players():
+
             # initialize balances list
             p.participant.vars['balances'] = []
             p.participant.vars['steal_start'] = p.steal_start
 
-            if p.id_in_group == 1:
+            if p.is_officer():
                 p.balance = C.officer_start_balance
 
-            # demo session does not need further configuration
-            if C.NUM_ROUNDS != 1:
-
-                # check if round is tutorial or trial period
-                if group.round_number < 3:
-                    if p.id_in_group > 1:
-                        p.income = subsession.session.config['tutorial_civilian_income']
-                    else:
-                        p.income = subsession.session.config['tutorial_officer_bonus']
+            # check if round is tutorial or practice period
+            if group.round_number < 3:
+                if p.is_officer():
+                    p.income = subsession.session.config['tutorial_officer_bonus']
                 else:
-                    # set harvest amount for civilians
-                    if p.id_in_group > 1:
-                        income_index = p.id_in_group-2
-                        p.income = round_incomes[income_index]
-                    else:
-                        # is officer
-                        p.income = p.participant.vars['officer_bonus']
-
+                    p.income = subsession.session.config['tutorial_civilian_income']
             else:
-                # only one round being played
-                officer = group.get_player_by_id(1)
-                officer.income = subsession.session.config['tutorial_officer_bonus']
+                # set harvest amount for civilians
+                if not p.is_officer():
+                    p.income = round_incomes[p.id_in_group-2]
+                else:
+                    p.income = p.participant.vars['officer_bonus']
 
+        # create defend tokens for current round for each group
         for i in range(C.defend_token_total):
             DefendToken.create(number=i+1, group=group,)
 
@@ -225,37 +226,9 @@ class Main(Page):
 
     @staticmethod
     def js_vars(player):
-        pjson = dict()
-        pjson['player'] = player.id
-        pjson['map'] = player.map
-        pjson['x'] = player.x
-        pjson['y'] = player.y
-        pjson['harvest_screen'] = player.harvest_screen
-
-        vars_dict = dict()
-        import json
-        vars_dict['pjson'] = json.dumps(pjson)
-
-        vars_dict['tutorial'] = C.NUM_ROUNDS > 1 and player.round_number == 1
-
-        # if the input is zero there is no delay after advance slowest is selected.
-        if player.round_number == 1:
-            vars_dict['advance_delay_milli'] = C.results_modal_seconds * 1000
-        else:
-            vars_dict['advance_delay_milli'] = 0
-
-        # if player.id_in_group == 1:
+        
         officer_tokens = DefendToken.filter(group=player.group)
-        # for o in officer_tokens:
         defend_tokens = results = [obj.to_dict() for obj in officer_tokens]
-        vars_dict['dtokens'] = json.dumps(results)
-
-        # group object must be retrieved otherwise it is not updated with recent values
-        group = player.group
-
-        # (bugfix) get player object to make sure that they are not stealing
-        # player = Player.objects.get(id=player.id)
-        # player.stop_stealing()
 
         config_key = player.session.config['civilian_income_config']
         low_to_high = player.session.config['civilian_income_low_to_high']
@@ -263,7 +236,6 @@ class Main(Page):
         civilian_ids = [x + C.PLAYERS_PER_GROUP - C.civilians_per_group for x in
             range(1, C.PLAYERS_PER_GROUP + 1)]
         
-        # todo: if tutorial or practice we need different variables
         if player.round_number < 3:  # tutorial or practice round
             tut_civ_income = player.session.config['tutorial_civilian_income']
             tut_o_bonus = player.session.config['tutorial_officer_bonus']
@@ -308,14 +280,6 @@ class Main(Page):
                     income=player.income,
                 )
         )
+    
 
-
-class ResultsWaitPage(WaitPage):
-    pass
-
-
-class Results(Page):
-    pass
-
-
-page_sequence = [Main, ResultsWaitPage, Results]
+page_sequence = [Main]

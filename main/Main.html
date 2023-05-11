@@ -179,6 +179,10 @@
                 this.configureOfficerTokens()
             },
             methods: {
+                submit: function() {
+                    // submit the hidden form to advance to next page
+                    document.getElementById('form').submit();
+                },
                 positionStealToken: function() {
                     if (this.harvestScreen) // update this so we dont check multiple times
                         return;
@@ -305,6 +309,12 @@
                         // reset harvest items
                         gsap.to('#seed, #water, #plow, #harvest', 0, {autoAlpha: 1});
                     }
+                },
+                updateOfficerHistory: function(officerHistory) {
+                    // update officer_history
+                    this.interceptsCount = officerHistory.intercept;
+                    this.finesCount = officerHistory.fine;
+                    this.reprimandsCount = officerHistory.reprimand;
                 },
             },
         }).mount('#app')

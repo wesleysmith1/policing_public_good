@@ -5,9 +5,6 @@ let officerGameComponent = {
         maps: Array,
         initialDefendTokens: Array,
         officerIncome: Number,
-        groupPlayerId: Number,
-        investigationCount: Number,
-        defendTokenTotal: Number,
         mapSize: Number,
         defendTokenSize: Number,
         probabilityReprimand: Number,
@@ -15,7 +12,6 @@ let officerGameComponent = {
     },
     data: function () {
         return {
-            playerId: Number,
             locationx: String,
             locationy: String,
             map: String,
@@ -100,6 +96,11 @@ let officerGameComponent = {
             }
 
             this.resetDefendToken(that.target, token)
+        },
+        cancelTimeout: function() {
+            console.log('cancel timeout is called');
+            if (this.timeout)
+                clearTimeout(this.timeout);
         },
         calculateLocation: function(map, unitContext, token) {
             let unit = unitContext.target.getBoundingClientRect();

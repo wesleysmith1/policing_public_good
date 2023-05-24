@@ -34,8 +34,6 @@
                 :maps="maps"
                 :initial-defend-tokens="officerTokens"
                 :officer-income="player.income"
-                :investigation-count="investigationCount"
-                :defend-token-total="defendTokenTotal"
                 :map-size="mapSize"
                 :defend-token-size="defendTokenSize"
                 :probability-reprimand="probabilityReprimand"
@@ -58,7 +56,6 @@
                     ref="stealcomponent"
                     :maps="maps"
                     :group-player-id="player.idInGroup"
-                    :player-location="playerLocation"
                     :investigation-count="investigationCount"
                     :defend-token-total="defendTokenTotal"
                     :map-size="mapSize"
@@ -105,7 +102,7 @@
             RESULTS: 3,
         }
       
-        createApp({
+        const app = createApp({
             components: {
                 'officer-game-component': officerGameComponent,
                 'civilian-harvest-component': civilianHarvestComponent,
@@ -124,7 +121,6 @@
                     player: js_vars.player,
                     x: {{player.x}},
                     y: {{player.y}},
-                    playerLocation: {},
                     stealLocation: {{player.steal_start}},
                     maps: [],
                     balance: 0,
@@ -170,15 +166,28 @@
                     playersPerGroup: {{C.PLAYERS_PER_GROUP}},
                     stealTimeoutMilli: {{C.steal_timeout_milli}},
                     stealTokenSlots: {{C.steal_token_slots}},
-                    reprimandAmount: {{C.officer_reprimand_amount}}
+                    reprimandAmount: {{C.officer_reprimand_amount}},
+                    balanceFrequency: {{ C.balance_update_rate }},
 
                 }
             }, 
             created() {
                 this.configureCivilianMaps()
                 this.configureOfficerTokens()
+                this.subscribeToBalance()
             },
             methods: {
+                subscribeToBalance: function () {
+                    if (!this.isOfficer)
+                        return
+
+                    this.balanceInterval = setInterval(() => {
+                        liveSend({
+                            'balance': true,
+                        });
+
+                    }, this.balanceFrequency);
+                },
                 submit: function() {
                     // submit the hidden form to advance to next page
                     document.getElementById('form').submit();
@@ -192,9 +201,10 @@
                 },
                 stealActive: function() {
                     // screen was toggled to steal
-                    // this.gameUpdate({
-                    //     'toggle': {harvest: false},
-                    // });
+                    console.log("toggle harvest: false")
+                    liveSend({
+                        'toggle': {harvest: false},
+                    });
                 },
                 toggle: function() {
                     if (this.harvestScreen) { // toggle to steal
@@ -220,9 +230,10 @@
                 },
                 harvestActive: function() {
                     this.stealLocation = Math.floor(Math.random() * 20)+1;
-                    // this.gameUpdate({
-                    //     'toggle': {harvest: true, steal_reset: this.stealLocation},
-                    // });
+                    console.log('toggle harvest: true', 'steal_reset', this.stealLocation)
+                    liveSend({
+                        'toggle': {harvest: true, steal_reset: this.stealLocation},
+                    });
                 },
                 configureCivilianMaps: function() {
                     // player maps
@@ -234,7 +245,6 @@
                 },
                 configureOfficerTokens: function() {
                     if (this.isOfficer) {
-                        // this.officerTokens = JSON.parse(dtokens);
                         this.officerTokens.forEach((t) => {
                             t.slot = t.number;
                             t.map = 0;
@@ -245,34 +255,40 @@
                     this.probabilityReprimand = value
                 },
                 defenseTokenReset: function(token) {
-                    // this.gameUpdate({
-                    //     'defend_token_reset': {'number': token.number, 'slot': token.slot},
-                    // });
+                    console.log('defend_token_reset')
+                    liveSend({
+                        'defend_token_reset': {'number': token.number, 'slot': token.slot},
+                    });
                 },
                 tokenDrag: function(token) {
-                    // this.gameUpdate({
-                    //     'defend_token_drag': token,
-                    // });
+                    console.log('defend_token_drag')
+                    liveSend({
+                        'defend_token_drag': token,
+                    });
                 },
                 tokenUpdate: function (token) {
-                    // this.gameUpdate({
-                    //     'defend_token_update': token,
-                    // });
+                    console.log('defend_token_update')
+                    liveSend({
+                        'defend_token_update': token,
+                    });
                 },
                 investigationUpdate: function(token) {
-                    // this.gameUpdate({
-                    //     'investigation_update': item,
-                    // });
+                    console.log('investigation_update')
+                    liveSend({
+                        'investigation_update': token,
+                    });
                 },
                 locationDrag: function(location) {
-                    // this.gameUpdate({
-                    //     'steal_token_drag': location,
-                    // });
+                    console.log('steal_token_drag')
+                    liveSend({
+                        'steal_token_drag': location,
+                    });
                 },
                 locationUpdate: function (location) {
-                    // this.gameUpdate({
-                    //     'steal_token_update': location,
-                    // });
+                    console.log('steal_token_update')
+                    liveSend({
+                        'steal_token_update': location,
+                    });
                 },
                 locationTokenReset: function(x) {
                     // this function informs the api that the token has reset
@@ -282,9 +298,10 @@
                         this.$refs.stealcomponent.setStealLocation();
                     }
                     this.stealLocation = x
-                    // this.gameUpdate({
-                    //     'steal_token_reset': {'steal_location': x,},
-                    // });
+                    console.log('steal_token_reset')
+                    liveSend({
+                        'steal_token_reset': {'steal_location': x,},
+                    });
                 },
                 locationTokenTimeout: function(x) {
                     this.stealLocation = x;
@@ -292,16 +309,17 @@
                         // watch won't be triggered here so we need to trigger the function manually
                         this.$refs.stealcomponent.setStealLocation();
                     }
-                    // this.gameUpdate({
-                    //     'steal_token_timeout': {'steal_location': x,}
-                    // })
+                    console.log('steal_token_timeout')
+                    liveSend({
+                        'steal_token_timeout': {'steal_location': x,}
+                    })
                 },
                 harvestUpdate: function (status) {
                     this.harvestStatus++;
-
-                    // this.gameUpdate({
-                    //     'harvest': {status: this.harvestStatus},
-                    // });
+                    console.log('harvest', this.harvestStatus)
+                    liveSend({
+                        'harvest': {status: this.harvestStatus},
+                    });
 
                     // reset harvest cycle
                     if (this.harvestStatus === 4) {
@@ -316,8 +334,140 @@
                     this.finesCount = officerHistory.fine;
                     this.reprimandsCount = officerHistory.reprimand;
                 },
+                showIntersection: function (i, officerHistory) {
+
+                    if (this.isOfficer) {
+                        // intersection-label-' + (map+1) + '-' + (player_id + 1)
+                        if (i.officer_reprimand) {
+                            this.stealNotification = "You were reprimanded!";
+                            setTimeout(() => {
+                                this.stealNotification = '';
+                            }, 2000);
+                        }
+
+                        // determine text for label
+                        let labelText;
+                        let labelColor;
+                        if (i.officer_reprimand) {
+                            labelText = -1 * (i.officer_reprimand - i.officer_bonus);
+                            labelColor = 'red';
+                        } else if (i.officer_bonus > 0){
+                            labelText = '+' + i.officer_bonus;
+                            labelColor = 'green';
+                        } else {
+                            labelText = '0';
+                            labelColor = 'black';
+                        }
+                        let labelElement = document.getElementById('intersection-label-' + i.map + "-" + i.culprit);
+                        labelElement.style.color = labelColor;
+                        labelElement.innerText = labelText;
+
+                        let intersectionSelector = '#indicator-' + i.map + '-' + i.culprit;
+                        let labelSelector = '#intersection-label-' + i.map + '-' + i.culprit;
+                        let circleSelector = '#indicator-' + i.map + '-' + i.culprit + '-circle';
+
+                        let x = i.culprit_x - 10;
+                        let y = i.culprit_y - 10;
+
+                        let tl = gsap.timeline();
+
+                        tl.to(intersectionSelector, 0, {left: x+1, top: y+1});
+                        tl.to(labelSelector, 0, {left: x-42, top: y-35});
+                        tl.to(intersectionSelector + ',' + labelSelector, {visibility: 'visible'});
+
+                        // indicator pulse
+                        tl.to(circleSelector, {duration: 1, r: 8})
+
+                        tl.to(intersectionSelector + ',' + labelSelector, {visibility: 'hidden'})
+
+                        // reset circle
+                        tl.to(circleSelector, {r: 4});
+
+
+                    } else {
+                        // was player the culprit
+                        if (i.culprit === this.player.idInGroup) {
+                            this.stealLocation = i.steal_reset;
+                            this.$refs.stealcomponent.cancelTimeout()
+                            this.positionStealToken()
+                        }
+
+                        if (i.guilty === this.player.idInGroup) {
+                            this.fineNotification = "Fined -" + this.civilianFine;
+
+                            this.stealNotification = "You were fined!";
+                            setTimeout(() => {
+                                this.stealNotification = '';
+                                this.fineNotification = '';
+                            }, 2000);
+                        }
+
+                        let selector = '#indicator-' + i.map + '-' + i.culprit;
+                        let circleSelector = '#indicator-' + i.map + '-' + i.culprit + '-circle';
+                        let x = i.culprit_x - 10;
+                        let y = i.culprit_y - 10;
+
+                        let tl = gsap.timeline();
+
+                        tl.to(selector, 0, {left: x+1, top: y+1});
+
+                        // display
+                        tl.to(selector, 0, {visibility: 'visible'});
+
+                        // indicator pulse
+                        tl.to(circleSelector, {duration: 1, r: 8})
+
+                        // hide indicator
+                        tl.to(selector, 0, {visibility: 'hidden'});
+
+                        // reset circle
+                        tl.to(circleSelector, {r: 4});
+                    }
+
+                },
+                receive: function(data) {
+                    console.log("data received from server", data)
+
+                    if (data.balance) {
+                        this.activeStealMaps = data.balance.active_maps;
+                        let latestBalance = data.balance[this.player.idInGroup].balance;
+                        this.activeSteal = data.balance[this.player.idInGroup].map;
+
+                        if (latestBalance === this.balance) { 
+                            // balance has not changed
+                            this.balanceColor = "black"
+                        } else if (latestBalance < this.balance) { 
+                            // balance decreasing
+                            this.balanceColor = "red"
+                        } else {
+                            // balance increasing
+                            this.balanceColor = "green"
+                        }
+
+                        this.balance = latestBalance;
+
+                    } else if (data.intersections) {
+                        // update officer history
+                        this.updateOfficerHistory(data.officer_history);
+
+                        data.intersections.forEach((i) => {
+                            console.log('intersection', i)
+                            this.showIntersection(i);
+                        })
+                    } else if (data.investigation_update || data.investigation_update === 0) {
+
+                        console.log(data.investigation_update)
+
+                        this.investigationCount = data.investigation_update
+
+                    }
+                }
             },
         }).mount('#app')
+
+        function liveRecv(data) {
+            app.receive(data)
+        }
     </script>
 
 {{ endblock }}

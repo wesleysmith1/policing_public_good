@@ -394,15 +394,39 @@ class Main(Page):
             return {0: {'balance': balance_update}}
         elif data.get('harvest'):
 
-            player.harvest_status = data['harvest']['status']
+            game_data_dict = {}
+            harvest_status = player.harvest_status = data['harvest']['status']
+
+            harvest_income = 0
 
             if player.harvest_status == 4:
                 # increase balance
+                harvest_income = player.income
                 player.balance += player.income
                 player.harvest_status = 0
 
+            game_data_dict.update({
+                "event_type": "harvest",
+                "event_time": event_time,
+                "production_inputs": harvest_status,  # don't update from player object in case it was reset to 0
+                "player": player.id_in_group,
+                "balance": player.balance,
+                "harvest_income": harvest_income
+            })
+
+            GameData.create(
+                event_time=event_time,
+                p=player.id_in_group,
+                g=player.group_id,
+                s=player.session_id,
+                round_number=player.round_number,
+                jdata=json.dumps(game_data_dict)
+            )
+
             print(f'harvest thing changed balance {player.balance}')
         elif data.get('toggle'):
+
+            game_data_dict = {}
 
             toggle_status = data['toggle']
 
@@ -412,16 +436,43 @@ class Main(Page):
                 player.harvest_screen = False
             else:
                 player.harvest_screen = True
+                game_data_dict.update({
+                    "steal_reset": toggle_status["steal_reset"]
+                })
                 
                 if player.map != 0:
                     victim = Player.group.get_player_by_id(id_in_group=player.map)
 
                     victim.increase_roi(event_time, False)
 
+                    game_data_dict.update({
+                        "victim": victim.id_in_group,
+                        "victim_roi": victim.roi,
+                        "victim_balance": victim.balance,
+                    })
+
                     player.decrease_roi(event_time, True)
                 else:
                     pass
                 player.map = 0
+
+            game_data_dict.update({
+                "event_type": "toggle",
+                "event_time": event_time,
+                "harvest_screen": player.harvest_screen,  # else steal
+                "player": player.id_in_group,
+                "player_roi": player.roi,
+                "player_balance": player.balance,
+            })
+
+            GameData.create(
+                event_time=event_time,
+                p=player.id,
+                g=player.group_id,
+                s=player.session_id,
+                round_number=player.round_number,
+                jdata=json.dumps(game_data_dict)
+            )
 
             print(f'toggle event: harvest screen {player.harvest_screen}, \
                   harvest status {player.harvest_status}')
@@ -447,6 +498,22 @@ class Main(Page):
             # # set token to no map while it is being dragged
             token.map = token.x = token.y = token.x2 = token.y2 = 0
 
+            game_data_dict = {
+                "event_type": "defend_token_drag",
+                "event_time": event_time,
+                "token_number": token_num,
+                "map": 0,
+                "player": player.id_in_group,
+            }
+            # token count is calculated so we save gamedata here
+            GameData.create(
+                event_time=event_time,
+                p=player.id_in_group,
+                g=player.group_id,
+                s=player.session_id,
+                jdata=json.dumps(game_data_dict)
+            )
+
             # # update users with investigation token count
             if investigation_change:
                 token_count = len(DefendToken.filter(group=player.group, map=11))
@@ -460,28 +527,73 @@ class Main(Page):
 
             location = data['steal_token_timeout']['steal_location']
 
+            game_data_dict = {
+                "event_type": "steal_token_timeout",
+                "player": player.id_in_group,
+                "event_time": event_time,
+                "steal_reset": location,
+            }
+
             victim = player.group.get_player_by_id(player.map)
 
             victim.increase_roi(event_time, False)
 
+            game_data_dict.update({
+                "victim": victim.id_in_group,
+                "victim_roi": victim.roi,
+                "victim_balance": victim.balance
+            })
+
             # update player roi
             player.decrease_roi(event_time, True)
+
+            game_data_dict.update({
+                "player_roi": player.roi,
+                "player_balance": player.balance,
+            })
 
             player.x = player.y = player.map = 0
 
             player.print()
 
+            GameData.create(
+                event_time=event_time,
+                p=player.id_in_group,
+                g=player.group_id,
+                s=player.session_id,
+                round_number=player.round_number,
+                jdata=json.dumps(game_data_dict)
+            )
+
         elif data.get('steal_token_drag'):
 
             print('steal_token_drag event')
+
+            game_data_dict = {
+                "event_type": "steal_token_drag",
+                "player": player.id_in_group,
+                "event_time": event_time,
+                "map": 0,
+            }
 
             if player.map > 0:
                 # update victim roi
                 victim = player.group.get_player_by_id(player.map)
                 victim.increase_roi(event_time, False)
 
+                game_data_dict.update({
+                    "victim": victim.id_in_group,
+                    "victim_roi": victim.roi,
+                    "victim_balance": victim.balance
+                })
+
                 # update player roi
                 player.decrease_roi(event_time, True)
+
+                game_data_dict.update({
+                    "player_roi": player.roi,
+                    "player_balance": player.balance,
+                })
 
             else:
                 pass
@@ -490,6 +602,15 @@ class Main(Page):
 
             player.print()
 
+            GameData.create(
+                event_time=event_time,
+                p=player.id_in_group,
+                g=player.group_id,
+                s=player.session_id,
+                round_number=player.round_number,
+                jdata=json.dumps(game_data_dict)
+            )
+
         elif data.get('defend_token_reset'):
 
             print('defend_token_reset event')
@@ -497,9 +618,40 @@ class Main(Page):
             token_number = data['defend_token_reset']['number']
             token_slot = data['defend_token_reset']['slot']
 
+            game_data_dict = {
+                "event_type": "defend_token_reset",
+                "event_time": event_time,
+                "player": player.id_in_group,
+                "token_number": token_number,
+                "defend_reset": token_slot,
+            }
+            GameData.create(
+                event_time=event_time,
+                p=player.id_in_group,
+                g=player.group_id,
+                s=player.session_id,
+                round_number=player.round_number,
+                jdata=json.dumps(game_data_dict)
+            )
+
         elif data.get('steal_token_reset'):
 
             print('steal_token_reset event')
+
+            game_data_dict = {
+                "event_type": "steal_token_reset",
+                "event_time": event_time,
+                "player": player.id_in_group,
+                "steal_reset": data["steal_token_reset"]["steal_location"]
+            }
+            GameData.create(
+                event_time=event_time,
+                p=player.id_in_group,
+                g=player.group_id,
+                s=player.session_id,
+                round_number=player.round_number,
+                jdata=json.dumps(game_data_dict)
+            )
 
         elif data.get('investigation_update'):
 
@@ -518,6 +670,22 @@ class Main(Page):
             token.last_updated = event_time
             # get investigation token count
             token_count = len(DefendToken.filter(group=player.group, map=11))
+
+            game_data_dict = {
+                "event_type": "investigation_update",
+                "event_time": event_time,
+                "player": player.id_in_group,
+                "token_number": token_num,
+                "investigation_count": token_count,
+            }
+            GameData.create(
+                event_time=event_time,
+                p=player.id_in_group,
+                g=player.group_id,
+                s=player.session_id,
+                round_number=player.round_number,
+                jdata=json.dumps(game_data_dict)
+            )
 
             return {0: {'investigation_update': token_count}}
         else:
@@ -550,17 +718,17 @@ class Main(Page):
                 token.x2 = x + C.defend_token_size
                 token.y2 = y + C.defend_token_size
 
-                # game_data_dict.update({
-                #     "event_type": "defend_token_update",
-                #     "player": player.id_in_group,
-                #     "event_time": event_time,
-                #     "token_number": token_num,
-                #     "map": token.map,
-                #     "token_x": token.x,
-                #     "token_y": token.y,
-                #     "token_x2": token.x2,
-                #     "token_y2": token.y2,
-                # })
+                game_data_dict.update({
+                    "event_type": "defend_token_update",
+                    "player": player.id_in_group,
+                    "event_time": event_time,
+                    "token_number": token_num,
+                    "map": token.map,
+                    "token_x": token.x,
+                    "token_y": token.y,
+                    "token_x2": token.x2,
+                    "token_y2": token.y2,
+                })
 
                 # todo check why this was changing the roi and updating the balance for the officer incorrectly?
                 players_in_prop = [p for p in player.group.get_players() if p.id_in_group > 1 and p.map == token.map]
@@ -620,15 +788,15 @@ class Main(Page):
 
                 player.print()
 
-                # game_data_dict.update({
-                #     "event_type": "steal_token_update",
-                #     "event_time": event_time,
-                #     "player": player.id_in_group,
-                #     "culprit": player.id_in_group,
-                #     "map": map,
-                #     "token_x": x,
-                #     "token_y": y,
-                # })
+                game_data_dict.update({
+                    "event_type": "steal_token_update",
+                    "event_time": event_time,
+                    "player": player.id_in_group,
+                    "culprit": player.id_in_group,
+                    "map": map,
+                    "token_x": x,
+                    "token_y": y,
+                })
 
                 # check for intersections
                 tokens = DefendToken.filter(group=player.group, map=player.map)#.order_by('last_updated')
@@ -685,11 +853,11 @@ class Main(Page):
                     victim.print()
                     print(f"END VICTIM")
 
-                    # game_data_dict.update({
-                    #     "victim": victim.id_in_group,
-                    #     "victim_roi": victim.roi,
-                    #     "victim_balance": victim.balance,
-                    # })
+                    game_data_dict.update({
+                        "victim": victim.id_in_group,
+                        "victim_roi": victim.roi,
+                        "victim_balance": victim.balance,
+                    })
 
             num_investigators = len(DefendToken.filter(group=player.group, map=11))
 
@@ -801,14 +969,14 @@ class Main(Page):
                 return {0: {'intersections': intersections,
                         'officer_history': officer_history}}
 
-            # GameData.objects.create(
-            #     event_time=event_time,
-            #     p=player.id_in_group,
-            #     g=group_id,
-            #     s=session_id,
-            #     round_number=round_number,
-            #     jdata=game_data_dict
-            # )
+            GameData.create(
+                event_time=event_time,
+                p=player.id_in_group,
+                g=player.group_id,
+                s=player.session_id,
+                round_number=player.round_number,
+                jdata=json.dumps(game_data_dict)
+            )
         player.print()
 
 page_sequence = [Main]

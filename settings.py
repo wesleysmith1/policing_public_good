@@ -15,7 +15,6 @@ SESSION_CONFIGS = [
         tutorial_civilian_income=40,
         tutorial_officer_bonus=260,
         session_identifier=0,
-        balance_update_rate=250,
         skip_to_round=1,
     )
 ]

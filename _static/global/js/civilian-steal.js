@@ -4,11 +4,8 @@ let civilianStealComponent = {
     props: {
         maps: Array,
         groupPlayerId: Number,
-        playerLocation: Object,
         investigationCount: Number,
         defendTokenTotal: Number,
-        probCulprit: Number,
-        probInnocent: Number,
         mapSize: Number,
         stealLocation: Number,
         activeSteal: Number,
@@ -41,10 +38,6 @@ let civilianStealComponent = {
 
     },
     methods: {
-        roundEnd() {
-            // disable tokens at end of round
-            Draggable.get('#location').disable()
-        },
         cancelTimeout: function() {
             if (this.timeout)
                 clearTimeout(this.timeout);

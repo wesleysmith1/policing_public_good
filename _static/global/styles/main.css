@@ -170,3 +170,8 @@ body {
     font-weight: bold;
 }
 
+/* hide otree timer */
+.otree-timer {
+    display: none;
+}
+

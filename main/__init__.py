@@ -321,7 +321,14 @@ def creating_session(subsession: Subsession):
 
 
 # PAGES
+class StartWait(WaitPage):
+    pass
+
 class Main(Page):
+
+    @staticmethod
+    def get_timeout_seconds(player: Player):
+        return None if player.round_number == 1 else 198
 
     @staticmethod
     def vars_for_template(player: Player):
@@ -1011,9 +1018,22 @@ class StartModal(Page):
             incomes_dict = dict(zip(civilian_ids, incomes))
             sorted(incomes_dict.values())
 
+            start_modal_object = dict(
+                civilian_incomes=incomes_dict,
+                steal_rate=C.civilian_steal_rate,
+                civilian_fine=C.civilian_fine_amount,
+                officer_bonus=player.group.get_player_by_id(1).participant.vars['officer_bonus'],
+                officer_reprimand=C.officer_reprimand_amount,
+            )
+
         return dict(
                 start_modal_object=start_modal_object,
             )
+
+
+class EndWait(WaitPage):
+    pass
+
     
 class ResultsModal(Page):
     timeout_seconds = 30
@@ -1042,4 +1062,4 @@ class ResultsModal(Page):
         return dict(results_object=results_object)
 
 
-page_sequence = [StartModal, Main, ResultsModal]
+page_sequence = [StartModal, StartWait, Main, EndWait, ResultsModal]

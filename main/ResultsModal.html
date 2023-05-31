@@ -1,0 +1,55 @@
+{{ block title }}{{ endblock }}
+{{ block content }}
+
+<style>
+    .otree-timer {
+        display: none;
+    }
+</style>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+<script src="{% static 'global/js/grain-img.js' %}"></script>
+<script src="{% static 'global/js/results-modal.js' %}"></script>
+
+<link rel="stylesheet" type="text/css" href="{% static 'global/styles/modal.css' %}">
+
+<div id="app">
+    <results-modal-component 
+        ref="resultsmodal" 
+        :results-object="resultsObject" 
+        :is-officer="isOfficer" 
+        :income="income">
+    </results-modal-component>
+</div>
+
+<script>
+    const { createApp } = Vue
+
+    const app = createApp({
+        components: {
+            'results-modal-component': resultsModalComponent,
+            'grain-image-component': grainImageComponent,
+        },
+        compilerOptions: {
+            delimiters: ["${", "}"]
+        },
+        data() {
+            return {
+                resultsObject: {{results_object}},
+                income: {{player.income}},
+                isOfficer: {{player.id_in_group}} == 1,
+            }
+        }, 
+        mounted() {
+            this.openResultsModal();
+        },
+        methods: {
+            openResultsModal: function() {
+                this.$refs.resultsmodal.openModal();
+            },
+        },
+    }).mount('#app')
+</script>
+
+{{ endblock }}

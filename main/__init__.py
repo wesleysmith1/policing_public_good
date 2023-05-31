@@ -137,6 +137,9 @@ class Group(BaseGroup):
             balance_update['active_maps'] = active_maps
 
         return balance_update
+    
+    def is_tutorial(self):
+        return self.round_number == 1
 
 
 def randomize_location():
@@ -183,7 +186,6 @@ class Player(BasePlayer):
         self.last_updated = time
         # update roi
         # todo: why is this explicit conversion required here?
-        # print(f"player roi {self.roi} steal rate {C.civilian_steal_rate}")
         self.roi = int(self.roi + C.civilian_steal_rate)
 
         if direct:
@@ -849,9 +851,7 @@ class Main(Page):
                     victim = player.group.get_player_by_id(player.map)
                     victim.decrease_roi(event_time, False)
 
-                    print(f"VICTIM")
                     victim.print()
-                    print(f"END VICTIM")
 
                     game_data_dict.update({
                         "victim": victim.id_in_group,
@@ -979,4 +979,67 @@ class Main(Page):
             )
         player.print()
 
-page_sequence = [Main]
+class StartModal(Page):
+    timeout_seconds = 15 
+    
+    @staticmethod
+    def vars_for_template(player: Player):
+        # income configuration number
+        config_key = player.session.config['civilian_income_config']
+        lth = player.session.config['civilian_income_low_to_high']
+
+        civilian_ids = [x + C.PLAYERS_PER_GROUP - C.civilians_per_group for x in
+               range(1, C.PLAYERS_PER_GROUP + 1)]
+
+        if player.round_number < 3:  # tutorial or practice round
+            tut_civ_income = player.session.config['tutorial_civilian_income']
+            tut_o_bonus = player.session.config['tutorial_officer_bonus']
+
+            incomes = [tut_civ_income] * C.civilians_per_group
+            incomes_dict = dict(zip(civilian_ids, incomes))
+            incomes_dict = dict(sorted(incomes_dict.items(), key=operator.itemgetter(1)))
+
+            start_modal_object = dict(
+                civilian_incomes=incomes_dict,
+                steal_rate=C.civilian_steal_rate,
+                civilian_fine=C.civilian_fine_amount,
+                officer_bonus=tut_o_bonus,
+                officer_reprimand=C.officer_reprimand_amount,
+            )
+        else:
+            incomes = IncomeDistributions.get_group_income_distribution(config_key, lth, player.round_number)
+            incomes_dict = dict(zip(civilian_ids, incomes))
+            sorted(incomes_dict.values())
+
+        return dict(
+                start_modal_object=start_modal_object,
+            )
+    
+class ResultsModal(Page):
+    timeout_seconds = 30
+
+    @staticmethod
+    def vars_for_template(player: Player):
+
+        # get title for results modal
+        title = 'Round Results'
+        if player.group.is_tutorial():
+            title = "Tutorial results"
+
+        results_object = dict(balance=player.balance, title=title)
+
+        if player.is_officer():
+            officer_results = dict(
+
+                officer_base_pay=C.officer_start_balance,
+                fines=player.group.civilian_fine_total,
+                reprimands=player.group.officer_reprimand_total,
+                officer_reprimand_amount=C.officer_reprimand_amount,
+            )
+
+            results_object.update(officer_results)
+
+        return dict(results_object=results_object)
+
+
+page_sequence = [StartModal, Main, ResultsModal]

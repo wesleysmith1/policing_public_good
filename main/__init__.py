@@ -1,12 +1,9 @@
 from otree.api import *
-import operator
+import json, math, time, datetime, operator
 from random import randrange
-import json
-import time, datetime
 import numpy as np
 
 from main.income_distributions import IncomeDistributions
-
 
 doc = """
 Your app description
@@ -94,7 +91,7 @@ class GameStatus:
 
 
 class Group(BaseGroup):
-    game_start = models.FloatField(blank=True)
+    game_start = models.FloatField(initial=0)
     officer_bonus = models.IntegerField(initial=0)
     # counters
     officer_bonus_total = models.IntegerField(initial=0)
@@ -103,6 +100,28 @@ class Group(BaseGroup):
     intercept_total = models.IntegerField(initial=0)
 
     game_status = models.IntegerField(choices=GameStatus.CHOICES, initial=GameStatus.SYNC)
+
+    def round_end(self):
+        end_time = time.time()
+
+        game_data_dict = {
+            'event_time': end_time,
+            'event_type': 'round_end',
+            'player': 1,
+        }
+
+        # final calculation of player balances for results page
+        for player in self.get_players():
+            player.balance = player.get_balance(end_time)
+
+        GameData.create(
+            event_time=end_time,
+            p=1,
+            group=self,
+            s=self.session_id,
+            round_number=self.round_number,
+            jdata=json.dumps(game_data_dict)
+        )
 
     def intersection_update(self, bonus, fine, reprimand, intercept):
         self.officer_bonus_total += bonus
@@ -140,6 +159,45 @@ class Group(BaseGroup):
     
     def is_tutorial(self):
         return self.round_number == 1
+    
+    def generate_results(self):
+        players = self.get_players()
+
+        # Initial civilian steal locations for csv
+        player_ids_in_session = []
+        steal_starts = []
+        for p in players:
+            steal_starts.append(p.participant.vars['steal_start'])
+            player_ids_in_session.append(p.participant.id_in_session)
+
+        officer_participant = self.get_player_by_id(1).participant
+        officer_bonus = officer_participant.vars['officer_bonus']
+        group_id = officer_participant.vars['group_id']
+
+        config_key = self.session.config['civilian_income_config']
+        lth = self.session.config['civilian_income_low_to_high']
+        incomes = IncomeDistributions.get_group_income_distribution(config_key, lth, self.round_number)
+
+        meta_data = dict(
+            round_number=self.subsession.round_number,
+            session_id=self.subsession.session_id,
+            steal_starts=steal_starts,
+            session_start=self.session.vars['session_start'],
+            session_date=self.session.vars['session_date'],
+            group_pk=self.id,
+            group_id=group_id,
+            officer_bonus=officer_bonus,
+            income_distribution=incomes,  # todo: this needs to reflect values not keys
+            player_ids_in_session=player_ids_in_session
+        )
+
+        # get data
+        game_data = GameData.filter(group=self)
+        sorted(game_data, key=lambda x: x.event_time)
+
+        # import here to avoid circular import
+        from helpers import generate_data
+        generate_data.GenerateCsv(C, game_data, self.session, self.subsession, meta_data, ).generate_csv()
 
 
 def randomize_location():
@@ -242,9 +300,9 @@ class DefendToken(ExtraModel):
     
 
 class GameData(ExtraModel):
+    group = models.Link(Group)
     event_time = models.FloatField()
     p = models.IntegerField(initial=0)
-    g = models.IntegerField(initial=0)
     s = models.IntegerField(initial=0)
     round_number = models.IntegerField(initial=0)
     jdata = models.StringField()
@@ -332,6 +390,26 @@ class Main(Page):
 
     @staticmethod
     def vars_for_template(player: Player):
+        if player.id_in_group == 1 and player.group.game_start == 0:
+            event_time = time.time()
+
+            game_data_dict = {
+                'event_time': event_time,
+                'event_type': 'round_start',
+                'player': 1,
+            }
+
+            x = GameData.create(
+                event_time=event_time,
+                p=player.id_in_group,
+                group=player.group,
+                s=player.session_id,
+                round_number=player.round_number,
+                jdata=json.dumps(game_data_dict)
+            )
+
+            print(f'GAME DATA CREATED {x}')
+    
         return dict(
             tutorial=C.NUM_ROUNDS > 1 and player.round_number == 1
         )
@@ -401,6 +479,7 @@ class Main(Page):
         if data.get('balance'):
             balance_update = player.group.balance_update(event_time)
             return {0: {'balance': balance_update}}
+
         elif data.get('harvest'):
 
             game_data_dict = {}
@@ -426,7 +505,7 @@ class Main(Page):
             GameData.create(
                 event_time=event_time,
                 p=player.id_in_group,
-                g=player.group_id,
+                group=player.group,
                 s=player.session_id,
                 round_number=player.round_number,
                 jdata=json.dumps(game_data_dict)
@@ -477,7 +556,7 @@ class Main(Page):
             GameData.create(
                 event_time=event_time,
                 p=player.id,
-                g=player.group_id,
+                group=player.group,
                 s=player.session_id,
                 round_number=player.round_number,
                 jdata=json.dumps(game_data_dict)
@@ -518,7 +597,7 @@ class Main(Page):
             GameData.create(
                 event_time=event_time,
                 p=player.id_in_group,
-                g=player.group_id,
+                group=player.group,
                 s=player.session_id,
                 jdata=json.dumps(game_data_dict)
             )
@@ -568,7 +647,7 @@ class Main(Page):
             GameData.create(
                 event_time=event_time,
                 p=player.id_in_group,
-                g=player.group_id,
+                group=player.group,
                 s=player.session_id,
                 round_number=player.round_number,
                 jdata=json.dumps(game_data_dict)
@@ -614,7 +693,7 @@ class Main(Page):
             GameData.create(
                 event_time=event_time,
                 p=player.id_in_group,
-                g=player.group_id,
+                group=player.group,
                 s=player.session_id,
                 round_number=player.round_number,
                 jdata=json.dumps(game_data_dict)
@@ -637,7 +716,7 @@ class Main(Page):
             GameData.create(
                 event_time=event_time,
                 p=player.id_in_group,
-                g=player.group_id,
+                group=player.group,
                 s=player.session_id,
                 round_number=player.round_number,
                 jdata=json.dumps(game_data_dict)
@@ -656,7 +735,7 @@ class Main(Page):
             GameData.create(
                 event_time=event_time,
                 p=player.id_in_group,
-                g=player.group_id,
+                group=player.group,
                 s=player.session_id,
                 round_number=player.round_number,
                 jdata=json.dumps(game_data_dict)
@@ -690,7 +769,7 @@ class Main(Page):
             GameData.create(
                 event_time=event_time,
                 p=player.id_in_group,
-                g=player.group_id,
+                group=player.group,
                 s=player.session_id,
                 round_number=player.round_number,
                 jdata=json.dumps(game_data_dict)
@@ -979,7 +1058,7 @@ class Main(Page):
             GameData.create(
                 event_time=event_time,
                 p=player.id_in_group,
-                g=player.group_id,
+                group=player.group,
                 s=player.session_id,
                 round_number=player.round_number,
                 jdata=json.dumps(game_data_dict)
@@ -1032,8 +1111,23 @@ class StartModal(Page):
 
 
 class EndWait(WaitPage):
-    pass
+    
+    @staticmethod
+    def after_all_players_arrive(group: Group):
 
+        # make end_token
+        group.round_end()
+
+        if C.NUM_ROUNDS > 1 and group.round_number < 3:
+            # dont generate results for the tutorial and trial period
+            pass
+        else:
+            group.generate_results()
+
+            # only for periods 3-10
+            if group.round_number > 2 or C.NUM_ROUNDS == 1:
+                for player in group.get_players():
+                    player.participant.vars['balances'].append(math.floor(player.balance))
     
 class ResultsModal(Page):
     timeout_seconds = 30

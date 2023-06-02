@@ -1,0 +1,1 @@
+This module is for generating csv data from GameData objects that are created during delegated_punishment game in the main module and a some additional helper functions in the time.py file.

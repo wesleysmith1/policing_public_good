@@ -1,0 +1,42 @@
+{{ block title }}Intermission{{ endblock }}
+
+{{ block content }}
+    <style>
+        .otree-btn-next {
+            display: none;
+        }
+    </style>
+
+    <div style="font-size: 30px;">
+        <p>{{ info }}</p>
+
+        <p>Civilians will see their harvest rates at the start of each round (and at the top of the harvesting screen during each period).</p>
+
+        <div style="padding-left: 75px;">
+            <p>
+                <span>The harvest rates for all civilians in your group:</span>&emsp;
+
+                {{ for income in civilian_incomes }}
+                    {{income}}
+                {{ endfor }}
+            </p>
+
+            <p>The harvest rate for you changes each period and will be shown in <strong>bold</strong>.</p>
+        </div>
+
+        <p>The officer will see their incentives at the start of each round (and in the middle of their defend/investigate screen during each period).</p>
+
+        <div style="padding-left: 75px;">
+            <p>The officer earns <strong>{{ officer_bonus }}</strong> grain per crime cleared</p>
+
+            <p>The officer loses <strong>{{ officer_reprimand }}</strong> grain per crime cleared when reprimanded</p>
+
+            <p>(reprimands happen with <strong>{{officer_review_probability}}%</strong> probability when an innocent civilian is punished)</p>
+        </div>
+
+        <p>These periods will {{ if subsession.round_number == 2 }}<span><strong>not</strong></span>{{ endif }} be used to calculate your payoffs at the end of the experiment.</p>
+    </div>
+
+    <p>{{ next_button }}</p>
+
+{{ endblock }}

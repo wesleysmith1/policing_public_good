@@ -379,6 +379,9 @@ def creating_session(subsession: Subsession):
 
 
 # PAGES
+class Wait(WaitPage):
+    pass
+
 class StartWait(WaitPage):
     pass
 
@@ -1154,6 +1157,57 @@ class ResultsModal(Page):
             results_object.update(officer_results)
 
         return dict(results_object=results_object)
+    
+class Intermission(Page):
+    timeout_seconds = 8000 #80
+    timer_text = 'Please wait for round to start'
+
+    @staticmethod
+    def is_displayed(player: Player):
+
+        if C.NUM_ROUNDS > 1 and (player.round_number == 2 or player.round_number == 3 or player.round_number == 7):
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def vars_for_template(player: Player):
+
+        config_key = player.session.config['civilian_income_config']
+        lth = player.session.config['civilian_income_low_to_high']
+        group_incomes = IncomeDistributions.get_group_income_distribution(config_key, lth, player.round_number)
+
+        if player.round_number < 3:  # tutorial or practice round
+
+            tut_civ_income = player.session.config['tutorial_civilian_income']
+            tut_o_bonus = player.session.config['tutorial_officer_bonus']
+
+            vars_dict = dict(
+                civilian_incomes=[tut_civ_income] * C.civilians_per_group,
+                steal_rate=C.civilian_steal_rate,
+                civilian_fine=C.civilian_fine_amount,
+                officer_bonus=tut_o_bonus,
+                officer_reprimand=C.officer_reprimand_amount,
+            )
+        else:
+            vars_dict = dict(
+                civilian_incomes=group_incomes,
+                steal_rate=C.civilian_steal_rate,
+                civilian_fine=C.civilian_fine_amount,
+                officer_bonus=player.group.get_player_by_id(1).participant.vars['officer_bonus'],
+                officer_reprimand=C.officer_reprimand_amount,
+            )
+
+        if player.round_number == 2:
+            vars_dict['officer_bonus'] = player.session.config['tutorial_officer_bonus']
+            info = 'We are about to perform a practice period to ensure everyone is familiar with the computer interface.'
+        else:
+            info = 'We are about to perform 4 rounds sequentially.'
+
+        vars_dict['info'] = info
+        vars_dict['officer_review_probability'] = C.officer_review_probability*100
+
+        return vars_dict
 
 
-page_sequence = [StartModal, StartWait, Main, EndWait, ResultsModal]
+page_sequence = [Wait, Intermission, StartModal, StartWait, Main, EndWait, ResultsModal]

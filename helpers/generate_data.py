@@ -478,6 +478,10 @@ class GenerateCsv:
             'Player_DefendTokens',
             'Group_PunishmentEvents',
             'Group_PK',
+            'Group_ReprimandAmount',
+            'Group_stealTechnology',
+            'Player_HarvestAmount',
+            'Group_ID_Description',
         ]
         return labels
 
@@ -515,6 +519,10 @@ class GenerateCsv:
             r['defend_tokens'],
             r['intersection_events'],
             meta_data['group_pk'],
+            self.C.officer_reprimand_amount, #Group_ReprimandAmount,
+            'Constant',
+            0 if pid == 1 else meta_data['income_distribution'][pid-2], #Player_HarvestAmount
+            'Constant - M/H', #todo: make dynamic
         ]
     
     def init_defend_tokens(self):

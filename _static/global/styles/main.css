@@ -1,4 +1,6 @@
 body {
+    overflow: hidden;
+    height: 100%;
     margin: 0;
     /* background: black; */
     background: #eeeeee;
@@ -11,7 +13,11 @@ body {
                             user-select: none; /* Non-prefixed version, currently
                                                 supported by Chrome, Opera and Firefox */
 }
+html {
+    height: 100%;
+}
 #app {
+    height: 100%;
 }
 .outer-container {
     height: 100%;
@@ -80,7 +86,6 @@ body {
     overflow-y: hidden;
     height: 90%;
     width: 100%;
-    /*border: 1px solid black;*/
 }
 
 .upper-harvest {

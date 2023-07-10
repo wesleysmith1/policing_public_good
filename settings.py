@@ -5,7 +5,7 @@ SESSION_CONFIGS = [
     dict(
         name='main',
         display_name="delegated_punishment",
-        app_sequence=['main'],
+        app_sequence=['welcome',    'main'],
         num_demo_participants=6,
         showup_payment=7,
         grain_conversion=.011111,

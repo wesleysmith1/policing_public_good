@@ -14,9 +14,9 @@ class C(BaseConstants):
     NAME_IN_URL = 'main'
     PLAYERS_PER_GROUP = 6
     civilians_per_group = 5
-    NUM_ROUNDS = 10
+    NUM_ROUNDS = 12
 
-    CIVILIAN_START_BALANCE = 1000
+    # CIVILIAN_START_BALANCE = 1000
 
     """Number of defend tokens officer starts with"""
     defend_token_total = 8
@@ -24,53 +24,130 @@ class C(BaseConstants):
     """Fine when convicted"""
     civilian_fine_amount = 120
     """number of grain earned per second of stealing"""
-    civilian_steal_rate = 13
+    civilian_steal_rate = 16
 
     """Probability that an intersection outcome will be reviewed"""
-    officer_review_probability = .1
-    """P punishment for officer if innocent civilian is punished"""
-    officer_reprimand_amount = 10
+    officer_review_probability = .25
 
-    """Officer incomes. One for each group"""
-    officer_incomes = [180, 180, 180]
+    """P punishment for officer if innocent civilian is punished"""
+    l = 1
+    m = 200
+    h = 800
+    # treatment variables including tutorial
+    officer_reprimand_amount = [l,l,l,l,l,l,l,m,m,m,m,m]
+
+    """Officer income (bonus). One for each group"""
+    officer_income = 50
 
     """ 
     this is the size of the tokens and maps are defined. 
     """
-    defend_token_size = 68 * 1.5
+    defend_token_size = 150
     civilian_map_size = 200 * 1.5
 
-    """
-    Probability innocent and guilty are calculated when the number of 
-    investigation tokens is >= this number
-    """
+    """Probability innocent and guilty are calculated when the number of investigation tokens is >= this number"""
     a_max = 6
-    """Guilty probability when """
-    beta = .9
-
+    """todo: label this correctly... find out where this is from and why it is needed...."""
+    beta = 18
     """
     Tutorial, game and results modal durations are defined here and passed to frontend
     """
     tutorial_duration_seconds = 1800
-    game_duration_seconds = 198
-    results_modal_seconds = 30
-    start_modal_seconds = 15
+    game_duration_seconds = 180
 
+    """"This defines how long after defend tokens have been placed, and when they can be moved again"""
+    defend_pause_duration = 2000
     """
     this defines how long a steal token remains on a map before resetting to the 'steal home'
     """
-    steal_timeout_milli = 1000
-
+    steal_timeout_milli = 2000
     """
-    Steal tokens positions defines the number of slots inside the 'steal home' rectangle. 
-    Steal tokens can be loaded or reset to any of the slots 
+    This is how long the steal token can actively steal continuously before being reset to the 'steal home'
+    """
+    steal_pause_duration = 1000
+    """
+    Steal tokens positions defines the number of slots inside the 'steal home' rectangle. Steal tokens can be loaded or 
+    reset to any of the slots 
     """
     steal_token_slots = 20
 
-    officer_start_balance = 0
-    civilian_start_balance = 0
+    officer_start_balance = 1400
+    civilian_start_balance = 1400
 
-    balance_update_rate = 1000
+        # probability calculations
+    # key=#probabilities -> innocent, culprit, prob nobody
+    # the index
+    calculated_probabilities = [
+        (.2, .2, .2), # 0 defense tokens tokens
+        (.18, .26, .2), # 1 defense ...
+        (.16, .32, .2), # 2 ...
+        (.14, .38, .2), # 3 ...
+        (.12, .44, .2), # 4 ...
+        (.10, .50, .2), # 5 ...
+        (.08, .56, .2), # 6 ...
+        (.06, .62, .2), # 7 ...
+        (.04, .68, .2), # 8 ...
+    ]
+
+    # mechanism parameters ================================================
+
+    dt_range = 10
+    dt_payment_max = 10
+    big_n = 4
+
+    # ========================================
+
+    # treatment = "OGL"
+    # N = 4
+    # n = 4
+
+    treatment = "MGL"
+    N = 4
+    n = 2
+
+    # treatment = "MPT"
+    # N = 4
+    # n = 2
+
+    # =========================================
+
+    q = 400
+    omega = 15 # max tokens
+    gamma = 15
+    r = 0
+
+    low_incomes = [1600, 2000, 2000, 2400]
+    high_incomes = [3200, 4000, 4000, 4800]
+
+    # participants that are selected to participate in each round
+    sampling_matrix = [
+        [1,2,3,4], # tutorial
+        [1,2], # 2
+        [1,2], # 3
+        [1,3],
+        [1,3],
+        [3,4],
+        [3,4], # 7
+        [1,4], # 8
+        [1,4], # 9
+        [3,4],
+        [3,4],
+        [2,4],
+        [2,4], # 13
+        [1,2], # 14
+        [1,2], 
+        [1,3],
+        [1,3],
+        [3,4], # 18
+        [3,4], # 19
+        [1,4], # 20
+        [1,4], 
+        [3,4],
+        [3,4],
+        [2,4],
+        [2,4],
+        
+    ]
 
 
 class Subsession(BaseSubsession):
@@ -91,8 +168,13 @@ class GameStatus:
 
 
 class Group(BaseGroup):
+    # ==========mechanism============
+    mechanism_start = models.FloatField(blank=True)
+    # ===============================
+
     game_start = models.FloatField(initial=0)
     officer_bonus = models.IntegerField(initial=0)
+
     # counters
     officer_bonus_total = models.IntegerField(initial=0)
     civilian_fine_total = models.IntegerField(initial=0)
@@ -100,6 +182,15 @@ class Group(BaseGroup):
     intercept_total = models.IntegerField(initial=0)
 
     game_status = models.IntegerField(choices=GameStatus.CHOICES, initial=GameStatus.SYNC)
+
+    officer_reprimand_amount = models.IntegerField() # dynamic treatment variable that can change round to round
+
+    # ===========mechanism functions================
+
+    def total_quantity(self):
+        return sum(p.quantity for p in self.get_players())
+
+    # ==============================================
 
     def round_end(self):
         end_time = time.time()
@@ -175,8 +266,7 @@ class Group(BaseGroup):
         group_id = officer_participant.vars['group_id']
 
         config_key = self.session.config['civilian_income_config']
-        lth = self.session.config['civilian_income_low_to_high']
-        incomes = IncomeDistributions.get_group_income_distribution(config_key, lth, self.round_number)
+        incomes = IncomeDistributions.get_group_income_distribution(config_key, self.round_number)
 
         meta_data = dict(
             round_number=self.subsession.round_number,
@@ -188,7 +278,8 @@ class Group(BaseGroup):
             group_id=group_id,
             officer_bonus=officer_bonus,
             income_distribution=incomes,  # todo: this needs to reflect values not keys
-            player_ids_in_session=player_ids_in_session
+            player_ids_in_session=player_ids_in_session,
+            reprimand=self.officer_reprimand_amount, # group reprimand amount
         )
 
         # get data
@@ -206,12 +297,23 @@ def randomize_location():
 
 
 class Player(BasePlayer):
+    # ==========mechanism fields==================
+    starting_points = models.IntegerField(initial=0)
+    quantity = models.IntegerField(initial=0)
+    your_cost = models.FloatField(initial=0)
+    mechanism_participant = models.BooleanField(initial=False)
+    nonparticipant_tax = models.FloatField(initial=0)
+    your_individual_quantity = models.FloatField()
+    utility = models.FloatField()
+    participant_rebate = models.IntegerField(initial=0)
+    # ============================================
+
     x = models.FloatField(initial=0)
     y = models.FloatField(initial=0)
     map = models.IntegerField(initial=0)
     last_updated = models.FloatField(blank=True)
     roi = models.IntegerField(initial=0)
-    balance = models.FloatField(initial=C.CIVILIAN_START_BALANCE)
+    balance = models.FloatField(initial=C.civilian_start_balance)
     harvest_status = models.IntegerField(initial=0)
     harvest_screen = models.BooleanField(initial=True)
     income = models.IntegerField(initial=40)
@@ -221,6 +323,10 @@ class Player(BasePlayer):
     steal_total = models.FloatField(initial=0)
     victim_total = models.FloatField(initial=0)
     ready = models.BooleanField(initial=False)
+
+    # ============ mechanism functions =================
+
+    # ==================================================
 
     def print(self):
         """player print method for debugging"""
@@ -281,7 +387,68 @@ class Player(BasePlayer):
         self.balance += self.income
 
     def officer_reprimand(self):
-        self.balance -= C.officer_reprimand_amount
+        self.balance -= self.group.officer_reprimand_amount
+
+
+class MechanismInput(ExtraModel):
+    player = models.Link(Player)
+    id_in_group = models.IntegerField()
+    group = models.Link(Group)
+    quantity = models.IntegerField(initial=0)
+    created = models.FloatField()
+    round_number = models.IntegerField()
+
+    @classmethod
+    def record(cls, quantity, player_id, id_in_group, group_id, round_number):
+        # update this os it is more accurate and gives player and participant information
+        MechanismInput.create(player_id=player_id, id_in_group=id_in_group, group_id=group_id, round_number=round_number, quantity=quantity, created=time.now())
+
+    @classmethod
+    def csvHeader(cls):
+        return [
+                    "group_id", 
+                    "participants",
+                    "player_id", 
+                    "round_number", 
+                    "quantity",
+                    "group_commodities", 
+                    "starting_points",
+                    "costs", 
+                    "utilities", 
+                    "individual_commodities", 
+                    # "participant_rebates", 
+                    "nonparticipant_taxes", 
+                    "created", 
+                    "treatment",
+                    "gamma",
+                    "price",
+                    "created_withinround"
+                ]
+
+    def row(self, uo, mechanism_start, g_id):
+        """g_id is the group id per group in session and always starts at 1. It is not a unique db key"""
+        return [
+            g_id,
+            list(uo['n_id']),
+            self.id_in_group,
+            self.round_number - 1, # subtract 1 because of tutorial
+            self.quantity, 
+            uo['group_quantities'],
+            uo['starting_points'],
+            list(uo['participant_costs']), 
+            list(uo['utility']), 
+            list(uo['quantity_ind_commodity']), 
+            # list(uo['participant_rebate']), 
+            list(uo['nonparticipant_tax']), 
+            datetime.datetime.fromtimestamp(self.created).strftime('%d/%m/%Y %H:%M:%S'), 
+            C.treatment,
+            uo['gamma'],
+            uo['price'],
+            self.created - mechanism_start if mechanism_start else self.created,
+        ]
+
+    def header(self):
+        return 
 
 
 class DefendToken(ExtraModel):
@@ -331,17 +498,15 @@ def creating_session(subsession: Subsession):
     subsession.session.vars['session_date'] = datetime.datetime.today().strftime('%Y%m%d')
 
     # get configurations from settings.py
-    low_to_high = subsession.session.config['civilian_income_low_to_high']
-    income_config = subsession.session.config['civilian_income_config']
+    config_key = subsession.session.config['civilian_income_config']
 
-    round_incomes = IncomeDistributions.get_group_income_distribution(
-        income_config, low_to_high, subsession.round_number)
+    round_incomes = IncomeDistributions.get_group_income_distribution(config_key, subsession.round_number)
 
     # this code is the terrible way that officer income is determined for session
     if subsession.round_number == 1:
         for index, group in enumerate(subsession.get_groups()):
             officer = group.get_player_by_id(1)
-            officer.participant.vars['officer_bonus'] = officer.income = C.officer_incomes[index]
+            officer.participant.vars['officer_bonus'] = officer.income = C.officer_income
 
             # save group id relative to session, not all groups in database
             officer.participant.vars['group_id'] = index+1
@@ -351,6 +516,9 @@ def creating_session(subsession: Subsession):
                     p.income = subsession.session.config['tutorial_civilian_income']
 
     for group in subsession.get_groups():
+
+        group.officer_reprimand_amount = C.officer_reprimand_amount[group.round_number - 1]
+
         for p in group.get_players():
 
             # initialize balances list
@@ -360,18 +528,25 @@ def creating_session(subsession: Subsession):
             if p.is_officer():
                 p.balance = C.officer_start_balance
 
-            # check if round is tutorial or practice period
-            if group.round_number < 3:
-                if p.is_officer():
-                    p.income = subsession.session.config['tutorial_officer_bonus']
+        # ==========================================================================
+
+            # demo session does not need further configuration
+            if C.NUM_ROUNDS != 1:
+
+                # check if round is tutorial or trial round
+                if group.round_number < 3:
+                    if p.id_in_group > 1:
+                        p.income = p.session.config['tutorial_civilian_income']
+                    else:
+                        p.income = p.session.config['tutorial_officer_bonus']
                 else:
-                    p.income = subsession.session.config['tutorial_civilian_income']
-            else:
-                # set harvest amount for civilians
-                if not p.is_officer():
-                    p.income = round_incomes[p.id_in_group-2]
-                else:
-                    p.income = p.participant.vars['officer_bonus']
+                    # set harvest amount for civilians
+                    if p.id_in_group > 1:
+                        income_index = p.id_in_group-2
+                        p.income = round_incomes[income_index]
+                    else:
+                        # is officer
+                        p.income = p.participant.vars['officer_bonus']
 
         # create defend tokens for current round for each group
         for i in range(C.defend_token_total):
@@ -379,6 +554,245 @@ def creating_session(subsession: Subsession):
 
 
 # PAGES
+# class SurveyInitWait(WaitPage):
+#     def after_all_players_arrive(group: Group):
+#         """select players that will participate in the mechanism."""
+
+#         policing = group.session.config['include_policing']
+#         if policing:
+#             selected_players = Player.filter(group_id=group.group.pk).exclude(id_in_group=1)
+#         else:
+#             selected_players = Player.filter(group_id=group.group.pk)
+
+#         if C.treatment == "OGL":
+#             selected_ids = [1,2,3,4]
+#         else:
+#             selected_ids = C.sampling_matrix[group.round_number - 1]
+
+#         for p in selected_players:
+#             # SurveyResponse.objects.create(group=self.group, player=p, response=dict(), participant=True)
+#             if p.id_in_group in selected_ids:
+#                 p.mechanism_participant=True
+
+#                 # add rebate for mgl participants
+#                 if p.mechanism_participant and C.treatment == 'MGL':
+#                     p.starting_points += 0
+#                     p.balance += 0
+                
+#                 p.save()
+
+
+# class DefendTokenSurvey(Page):
+
+#     @staticmethod
+#     def get_timeout_seconds(player: Player):
+#         if player.round_number == 1:
+#             return None
+#         else:
+#             return 45
+
+#     @staticmethod
+#     def vars_for_template(player: Player):
+
+#         if player.player.id_in_group == 1 and not player.group.mechanism_start:
+#             player.group.mechanism_start = time.time()
+
+#         constants = dict(
+#             N=C.N,
+#             n=C.n,
+#             q=C.q,
+#             gamma=C.gamma,
+#             beta=C.beta,
+#             r=C.r,
+#         )
+
+#         template_vars = dict(
+#             selected=player.mechanism_participant,
+#             dt_range=C.dt_range,
+#             dt_payment_max=C.dt_payment_max,
+#             big_n=C.PLAYERS_PER_GROUP-1,
+#             gamma=C.gamma,
+#             omega=C.omega,
+#             constants=constants,
+#         )
+
+#         return template_vars
+
+
+# class DefendTokenWaitPage(WaitPage):
+#     timeout_seconds = 80 
+#     timer_text = 'Please wait for round to start'
+
+#     @staticmethod
+#     def after_all_players_arrive(group: Group):
+#         """calculate how many defend tokens are going to be used, costs and tax.
+#         Individual survey tax is saved to survey objects here, but not applied
+#         until after round, when tax is recalculated to include costs accrued during round"""
+
+#         # calculate fields for all players
+#         quantities = Player.objects.filter(group_id=group.id).order_by('id_in_group').values_list('quantity', flat=True)
+#         balances = Player.objects.filter(group_id=group.id).order_by('id_in_group').values_list('balance', flat=True)
+
+#         participants = Player.objects.filter(group_id=group.id, mechanism_participant=True)
+#         nonparticipants = Player.objects.filter(group_id=group.id, mechanism_participant=False)
+
+#         g_id = participants[0].participant.vars['group_id']
+
+#         if group.round_number == 1 and C.treatment != 'OGL':
+
+#             utilities = calculate_utility(
+#                 C.N,
+#                 C.q,
+#                 C.gamma,
+#                 list(quantities), 
+#                 r=C.r,
+#                 betai = list(balances),
+#                 n_id = [1,2],
+#                 mechanism = C.treatment
+#                 )
+
+#             for player in participants:
+#                 if player.id_in_group in [1,2]:
+#                     player.your_cost = utilities['participant_costs'][player.id_in_group-1]
+#                     player.your_individual_quantity = utilities['quantity_ind_commodity'][player.id_in_group-1]
+#                     player.utility = utilities['utility'][player.id_in_group-1]
+#                     player.participant_rebate = C.r
+            
+#             utilities = calculate_utility(
+#                 C.N,
+#                 C.q,
+#                 C.gamma,
+#                 list(quantities), 
+#                 r=C.r,
+#                 betai = list(balances),
+#                 n_id = [3,4],
+#                 mechanism = C.treatment
+#                 )
+            
+#             for player in participants:
+#                 if player.id_in_group in [3,4]:
+#                     player.your_cost = utilities['participant_costs'][player.id_in_group-1]
+#                     player.your_individual_quantity = utilities['quantity_ind_commodity'][player.id_in_group-1]
+#                     player.utility = utilities['utility'][player.id_in_group-1]
+#                     player.participant_rebate = C.r
+#         else:
+#             utilities = calculate_utility(
+#                 C.N,
+#                 C.q,
+#                 C.gamma,
+#                 list(quantities), 
+#                 r=C.r,
+#                 betai = list(balances),
+#                 n_id = list(participants.values_list('id_in_group', flat=True)),
+#                 mechanism = C.treatment
+#                 )
+
+#             # note this code does not work if there is an officer!
+
+#             for player in participants:
+#                 player.your_cost = utilities['participant_costs'][player.id_in_group-1]
+#                 player.your_individual_quantity = utilities['quantity_ind_commodity'][player.id_in_group-1]
+#                 player.utility = utilities['utility'][player.id_in_group-1]
+
+#             for player in nonparticipants:
+#                 player.nonparticipant_tax = utilities['nonparticipant_tax'][player.id_in_group-1]
+#                 player.utility = utilities['utility'][player.id_in_group-1]
+#                 player.your_cost = utilities['participant_costs'][player.id_in_group-1]
+#                 player.your_individual_quantity = utilities['quantity_ind_commodity'][player.id_in_group-1]
+
+#         # write csv code for the round
+
+#         session_start=group.session.vars['session_start']
+#         session_date=group.session.vars['session_date']
+
+#         if 'session_identifier' in group.session.config:
+#             from delegated_punishment.helpers import write_session_dir, TimeFormatter
+#             file_path = write_session_dir(group.session.config['session_identifier'])
+#         else:
+#             file_path = 'data/'
+
+#         mechanism_inputs = MechanismInput.objects.filter(group_id=group.id).order_by('created')
+
+#         n_id = list(participants.values_list('id_in_group', flat=True))
+#         # balances = get_round_incomes(self.round_number)
+
+#         start = math.floor(session_start)
+#         file_name = "{}Session_{}_Group_{}_{}_{}.csv".format(file_path, group.session.id, player.participant.vars['group_id'], session_date, start)
+
+#         f = open(file_name, 'a', newline='')
+        
+#         with f:
+#             writer = csv.writer(f)
+
+#             # write header
+#             if group.round_number == 1: #todo: adjust this to exclude practice rounds
+#                 writer.writerow(MechanismInput.csvHeader())
+
+#             group_quantities = [0,0,0,0]
+#             for mi in mechanism_inputs:
+
+#                 # update group quantities
+#                 group_quantities[mi.id_in_group-1] = mi.quantity
+
+#                 utility_obj = calculate_utility(
+#                     C.N,
+#                     C.q,
+#                     C.gamma,
+#                     group_quantities, 
+#                     r=C.r,
+#                     betai = list(balances),
+#                     n_id = n_id,
+#                     mechanism = C.treatment
+#                 )
+
+#                 if group.round_number != 1:
+#                     writer.writerow(mi.row(utility_obj, group.mechanism_start, g_id))
+
+#         # update player balance to their calculated utility
+#         for player in group.get_players():
+#             player.balance = player.utility
+            
+#             # players cannot earn a utility less than 0
+#             player.balance = 0 if player.balance < 0 else player.balance
+
+
+# class EndModal(Page):
+#     @staticmethod
+#     def get_timeout_seconds(player: Player):
+#         if player.round_number == 1:
+#             return None
+#         else:
+#             return 10
+
+#     @staticmethod
+#     def vars_for_template(player: Player):
+
+#         # tutorial everyone is a participant so totals are taken from subgroups
+#         if player.round_number == 1 and C.treatment != 'OGL':
+#             if player.player.id_in_group in [1,2]:
+#                 total_quantity = player.group.get_player_by_id(1).quantity + player.group.get_player_by_id(2).quantity
+#             else:
+#                 total_quantity = player.group.get_player_by_id(3).quantity + player.group.get_player_by_id(4).quantity
+#         else:
+#             total_quantity = player.group.total_quantity()
+
+        
+#         return dict(
+#             mechanism_object=dict(
+#                 your_quantity=player.quantity, 
+#                 your_cost=player.your_cost,
+#                 total_quantity=total_quantity,
+#                 nonparticipant_tax=player.nonparticipant_tax,
+#                 individual_quantity=player.your_individual_quantity,
+#                 utility=player.utility,
+#                 participant_rebate=player.participant_rebate,
+#                 treatment=C.treatment,
+#                 balance=player.balance,
+#                 participant=player.mechanism_participant
+#             )
+#         )
+
+
 class Wait(WaitPage):
     pass
 
@@ -394,7 +808,7 @@ class Main(Page):
     @staticmethod
     def vars_for_template(player: Player):
         if player.id_in_group == 1 and player.group.game_start == 0:
-            event_time = time.time()
+            player.group.game_start = event_time = time.time()
 
             game_data_dict = {
                 'event_time': event_time,
@@ -442,10 +856,10 @@ class Main(Page):
                 steal_rate=C.civilian_steal_rate,
                 civilian_fine=C.civilian_fine_amount,
                 officer_bonus=tut_o_bonus,
-                officer_reprimand=C.officer_reprimand_amount,
+                officer_reprimand=player.group.officer_reprimand_amount,
             )
         else:
-            incomes = IncomeDistributions.get_group_income_distribution(config_key, low_to_high, player.round_number)
+            incomes = IncomeDistributions.get_group_income_distribution(config_key, player.round_number)
             incomes_dict = dict(zip(civilian_ids, incomes))
             sorted(incomes_dict.values())
 
@@ -454,7 +868,7 @@ class Main(Page):
                 steal_rate=C.civilian_steal_rate,
                 civilian_fine=C.civilian_fine_amount,
                 officer_bonus=player.group.get_player_by_id(1).participant.vars['officer_bonus'],
-                officer_reprimand=C.officer_reprimand_amount,
+                officer_reprimand=player.group.officer_reprimand_amount,
             )
         
         return dict(
@@ -462,6 +876,7 @@ class Main(Page):
             start_modal_object=start_modal_object,
             game_status=player.group.field_maybe_none('game_status'),
             harvest_screen=player.harvest_screen,
+            balance_update_rate=player.session.config['balance_update_rate'],
             player=dict(
                     id=player.id,
                     idInGroup=player.id_in_group,
@@ -475,7 +890,6 @@ class Main(Page):
     
     @staticmethod
     def live_method(player, data):
-        print('received data from', data)
 
         event_time = time.time()
     
@@ -963,16 +1377,21 @@ class Main(Page):
                 culprit = inter["culprit"]
                 innocent = inter["map"]  # also victim
 
+                # probability no player player convicted
+                probability_none = C.calculated_probabilities[num_investigators][2]
+
                 if num_investigators >= C.a_max:
                     innocent_prob = 0
-                    guilty_prob = C.beta
+                    # get largest probability since they are all the same after 6 tokens
+                    guilty_prob = C.calculated_probabilities[-1][1]
                 else:
-                    innocent_prob = C.beta * ((1/(C.civilians_per_group -1) - (1/(C.civilians_per_group -1)) * (num_investigators/C.a_max)))
+                    innocent_prob = C.calculated_probabilities[num_investigators][0]
 
-                    guilty_prob = C.beta * (1/(C.civilians_per_group - 1) + ((C.civilians_per_group - 2) / (C.civilians_per_group - 1) * (num_investigators/C.a_max)))
+                    guilty_prob = C.calculated_probabilities[num_investigators][1]
+
 
                 # todo: this should be dynamic or documented that it is tied to num_civilians
-                multi = [0, innocent_prob, innocent_prob, innocent_prob, innocent_prob, innocent_prob, 1-C.beta]
+                multi = [0, innocent_prob, innocent_prob, innocent_prob, innocent_prob, innocent_prob, probability_none]
 
                 # subtract 1 for 0 based index
                 multi[culprit - 1] = guilty_prob
@@ -1024,7 +1443,7 @@ class Main(Page):
                     if audit:
                         if wrongful_conviction:
                             officer.officer_reprimand()
-                            officer_reprimand = C.officer_reprimand_amount
+                            officer_reprimand = player.group.officer_reprimand_amount
                             total_reprimand += 1
 
                     # update intersection object
@@ -1055,8 +1474,6 @@ class Main(Page):
 
                 game_data_dict["intersections"] = game_data_intersections
 
-                return {0: {'intersections': intersections,
-                        'officer_history': officer_history}}
 
             GameData.create(
                 event_time=event_time,
@@ -1066,6 +1483,11 @@ class Main(Page):
                 round_number=player.round_number,
                 jdata=json.dumps(game_data_dict)
             )
+
+            if total_inter > 0:
+                return {0: {'intersections': intersections,
+                        'officer_history': officer_history}}
+
         player.print()
 
 class StartModal(Page):
@@ -1093,10 +1515,10 @@ class StartModal(Page):
                 steal_rate=C.civilian_steal_rate,
                 civilian_fine=C.civilian_fine_amount,
                 officer_bonus=tut_o_bonus,
-                officer_reprimand=C.officer_reprimand_amount,
+                officer_reprimand=player.group.officer_reprimand_amount,
             )
         else:
-            incomes = IncomeDistributions.get_group_income_distribution(config_key, lth, player.round_number)
+            incomes = IncomeDistributions.get_group_income_distribution(config_key, player.round_number)
             incomes_dict = dict(zip(civilian_ids, incomes))
             sorted(incomes_dict.values())
 
@@ -1105,7 +1527,7 @@ class StartModal(Page):
                 steal_rate=C.civilian_steal_rate,
                 civilian_fine=C.civilian_fine_amount,
                 officer_bonus=player.group.get_player_by_id(1).participant.vars['officer_bonus'],
-                officer_reprimand=C.officer_reprimand_amount,
+                officer_reprimand=player.group.officer_reprimand_amount,
             )
 
         return dict(
@@ -1151,7 +1573,7 @@ class ResultsModal(Page):
                 officer_base_pay=C.officer_start_balance,
                 fines=player.group.civilian_fine_total,
                 reprimands=player.group.officer_reprimand_total,
-                officer_reprimand_amount=C.officer_reprimand_amount,
+                officer_reprimand_amount=player.group.officer_reprimand_amount,
             )
 
             results_object.update(officer_results)
@@ -1159,13 +1581,13 @@ class ResultsModal(Page):
         return dict(results_object=results_object)
     
 class Intermission(Page):
-    timeout_seconds = 8000 #80
+    timeout_seconds = 40
     timer_text = 'Please wait for round to start'
 
     @staticmethod
     def is_displayed(player: Player):
 
-        if C.NUM_ROUNDS > 1 and (player.round_number == 2 or player.round_number == 3 or player.round_number == 7):
+        if C.NUM_ROUNDS > 1 and (player.round_number == 2 or player.round_number == 3 or player.round_number == 8):
             return True
         else:
             return False
@@ -1174,8 +1596,7 @@ class Intermission(Page):
     def vars_for_template(player: Player):
 
         config_key = player.session.config['civilian_income_config']
-        lth = player.session.config['civilian_income_low_to_high']
-        group_incomes = IncomeDistributions.get_group_income_distribution(config_key, lth, player.round_number)
+        group_incomes = IncomeDistributions.get_group_income_distribution(config_key, player.round_number)
 
         if player.round_number < 3:  # tutorial or practice round
 
@@ -1187,7 +1608,7 @@ class Intermission(Page):
                 steal_rate=C.civilian_steal_rate,
                 civilian_fine=C.civilian_fine_amount,
                 officer_bonus=tut_o_bonus,
-                officer_reprimand=C.officer_reprimand_amount,
+                officer_reprimand=player.group.officer_reprimand_amount,
             )
         else:
             vars_dict = dict(
@@ -1195,7 +1616,7 @@ class Intermission(Page):
                 steal_rate=C.civilian_steal_rate,
                 civilian_fine=C.civilian_fine_amount,
                 officer_bonus=player.group.get_player_by_id(1).participant.vars['officer_bonus'],
-                officer_reprimand=C.officer_reprimand_amount,
+                officer_reprimand=player.group.officer_reprimand_amount,
             )
 
         if player.round_number == 2:
@@ -1210,4 +1631,22 @@ class Intermission(Page):
         return vars_dict
 
 
-page_sequence = [Wait, Intermission, StartModal, StartWait, Main, EndWait, ResultsModal]
+page_sequence = [
+        # ==mechanism pages==
+        # SurveyInitWait,
+        # Wait,
+        # MechanismStartModal,
+        # Wait,
+        # DefendTokenSurvey,
+        # Wait,
+        # MechanismEndModal,
+        # ResultsWaitPage,
+        # ==game pages==
+        Wait, 
+        Intermission, 
+        StartModal, 
+        StartWait, 
+        Main, 
+        EndWait, 
+        ResultsModal,
+    ]

@@ -8,14 +8,13 @@ SESSION_CONFIGS = [
         app_sequence=['main'],
         num_demo_participants=6,
         showup_payment=7,
-        grain_conversion=.1,
-        participant_endowment=10,
+        grain_conversion=.011111,
         civilian_income_low_to_high=True,
         civilian_income_config=1,
-        tutorial_civilian_income=40,
-        tutorial_officer_bonus=260,
+        tutorial_civilian_income=20,
+        tutorial_officer_bonus=50,
         session_identifier=0,
-        skip_to_round=1,
+        balance_update_rate=100,
     )
 ]
 

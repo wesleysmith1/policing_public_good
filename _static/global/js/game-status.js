@@ -20,6 +20,8 @@ let gameStatusComponent = {
     },
     data: function () {
         return {
+            probInnocent: [20,18,16,14,12,10,8,6,4],
+            probCulprit: [20,26,32,38,44,50,56,62,68]
         }
     },
     mounted: function () {
@@ -32,27 +34,44 @@ let gameStatusComponent = {
     },
     computed: {
         probabilityCulprit() {
+
+            // todo do we need the amax thing anymore?
+            return this.probCulprit[this.investigationCount]
+
             if (this.investigationCount > this.aMax)
-                return this.beta * 100;
+                return 90;
             else {
-                let guilty = this.beta * (1/(this.civiliansPerGroup - 1) + ((this.civiliansPerGroup - 2) / (this.civiliansPerGroup - 1) * (this.investigationCount/this.aMax)))
-                return Math.round(guilty*10000) / 100
+                // let guilty = this.beta * (1/(this.civiliansPerGroup - 1) + ((this.civiliansPerGroup - 2) / (this.civiliansPerGroup - 1) * (this.investigationCount/this.aMax)))
+                let guilty = this.beta + this.investigationCount * 12
+                return guilty
+                // return Math.round(guilty*10000) / 100
             }
         },
         probabilityInnocent() {
-            if (this.investigationCount > this.aMax)
-                return 0;
-            else {
-                let innocent = this.beta * ((1/(this.civiliansPerGroup -1) - (1/(this.civiliansPerGroup -1)) * (this.investigationCount/this.aMax)))
+            let innocent = this.probInnocent[this.investigationCount]
 
-                // calculate probability of officer reprimand because it depends on probability innocent
-                if (this.isOfficer) {
-                    let probabilityReprimand = Math.round(this.reviewProbability * 3 * innocent * 10000) / 100
-                    this.$emit('update-probability-reprimand', probabilityReprimand)
-                }
-
-                return Math.round(innocent*10000) / 100
+            // calculate probability of officer reprimand because it depends on probability innocent
+            if (this.isOfficer) {
+                let probabilityReprimand = Math.round(this.reviewProbability * 3 * innocent * 10000) / 100
+                this.$emit('update-probability-reprimand', probabilityReprimand)
             }
+            return innocent
+            // if (this.investigationCount > this.aMax)
+            //     return 0;
+            // else {
+            //     // let innocent = this.beta * ((1/(this.civiliansPerGroup -1) - (1/(this.civiliansPerGroup -1)) * (this.investigationCount/this.aMax)))
+
+            //     // let innocent = this.beta - this.investigationCount * 3
+            //     let innocent = this.probInnocent[this.investigationCount]
+
+            //     // calculate probability of officer reprimand because it depends on probability innocent
+            //     if (this.isOfficer) {
+            //         let probabilityReprimand = Math.round(this.reviewProbability * 3 * innocent * 10000) / 100
+            //         this.$emit('update-probability-reprimand', probabilityReprimand)
+            //     }
+            //     return innocent
+            //     // return Math.round(innocent*10000) / 100
+            // }
         },
     },
     template:
@@ -60,7 +79,7 @@ let gameStatusComponent = {
             <div class="game-status-container">
                 <div class="balance-container">
                     <div class="balance-label">Balance (<grain-image-component :size=20></grain-image-component>)</div>
-                    <div class="balance" :style="{ color: balanceColor }"> {{balance}}</div>
+                    <div class="balance" :style="{ color: balanceColor }"> {{balance.toFixed(0)}}</div>
             
                     <div class="notification-label">
                         <div class="steal-notification">{{stealNotification}}</div>

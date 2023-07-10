@@ -31,7 +31,7 @@ class GenerateCsv:
             session_start = 0
             session_date = "1992_0414"
             officer_bonus = -1
-            income_distribution = [-1, -1, -1, -1]
+            income_distribution = [-1, -1, -1, -1, -1]
         else:
             steal_starts = self.meta_data['steal_starts']
             player_ids_in_session = self.meta_data['player_ids_in_session']
@@ -53,13 +53,10 @@ class GenerateCsv:
 
         try:
             tf = time.TimeFormatter(self.game_data[0].event_time)
-            log.info(f'START TIME FOR TIME FORMATTER:{self.game_data[0].event_time}')
         except:
             tf = None
 
         players = self.init_players(session_start, steal_starts, player_ids_in_session, tf)
-
-        log.info(f"THERE ARE {len(self.game_data)} EVENTS FOR THIS ROUND")
 
         for event in self.game_data:
             # get JSON data
@@ -519,7 +516,7 @@ class GenerateCsv:
             r['defend_tokens'],
             r['intersection_events'],
             meta_data['group_pk'],
-            self.C.officer_reprimand_amount, #Group_ReprimandAmount,
+            meta_data['reprimand'], #Group_ReprimandAmount, #Group_ReprimandAmount,
             'Constant',
             0 if pid == 1 else meta_data['income_distribution'][pid-2], #Player_HarvestAmount
             'Constant - M/H', #todo: make dynamic

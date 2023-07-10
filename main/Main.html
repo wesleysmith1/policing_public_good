@@ -28,11 +28,15 @@
             <officer-game-component
                 id="officerGame"
                 class="game-container"
-                ref="officercomponent"
                 v-if="isOfficer"
+                ref="officercomponent"
                 :maps="maps"
                 :initial-defend-tokens="officerTokens"
                 :officer-income="player.income"
+                :investigation-count="investigationCount"
+                :defend-token-total="defendTokenTotal"
+                :defend-pause-duration="defendPauseDuration"
+                :player-balances="playerBalances"
                 :map-size="mapSize"
                 :defend-token-size="defendTokenSize"
                 :probability-reprimand="probabilityReprimand"
@@ -44,30 +48,35 @@
             </officer-game-component>
             <div id="harvestGame" class="game-container" v-else>
                 <civilian-harvest-component
-                    v-if="harvestScreen"
-                    class="harvest"
-                    :harvest-status="harvestStatus"
-                    :income="player.income"
-                    @harvest-update="harvestUpdate">
+                        v-if="harvestScreen"
+                        class="harvest"
+                        :harvest-status="harvestStatus"
+                        :income="player.income"
+                        @harvest-update="harvestUpdate">
                 </civilian-harvest-component>
                 <civilian-steal-component
-                    v-show="!harvestScreen"
-                    ref="stealcomponent"
-                    :maps="maps"
-                    :group-player-id="player.idInGroup"
-                    :investigation-count="investigationCount"
-                    :defend-token-total="defendTokenTotal"
-                    :map-size="mapSize"
-                    :steal-location="stealLocation"
-                    :active-steal="activeSteal"
-                    :active-steal-maps="activeStealMaps"
-                    :fine-notification="fineNotification"
-                    :steal-timeout-milli="stealTimeoutMilli"
-                    :steal-token-slots="stealTokenSlots"
-                    @location-drag="locationDrag"
-                    @location-update="locationUpdate"
-                    @location-token-reset="locationTokenReset"
-                    @location-token-timeout="locationTokenTimeout">
+                        v-show="!harvestScreen"
+                        ref="stealcomponent"
+                        :maps="maps"
+                        :group-player-id="player.idInGroup"
+                        :player-location="playerLocation"
+                        :investigation-count="investigationCount"
+                        :defend-token-total="defendTokenTotal"
+                        :pause-duration="pauseDuration"
+                        :player-balances="playerBalances"
+                        :map-size="mapSize"
+                        :steal-location="stealLocation"
+                        :active-steal="activeSteal"
+                        :active-steal-maps="activeStealMaps"
+                        :fine-notification="fineNotification"
+                        :steal-timeout-milli="stealTimeoutMilli"
+                        :steal-token-slots="stealTokenSlots"
+                        @location-drag="locationDrag"
+                        @location-update="locationUpdate"
+                        @location-token-reset="locationTokenReset"
+                        @location-token-timeout="locationTokenTimeout"
+                        :defend-token-size="defendTokenSize"
+                >
                 </civilian-steal-component>
                 <div v-show="!isOfficer" @click='toggle' class='toggle'>${ harvestScreen ? 'Steal' : 'Harvest'}</div>
             </div>
@@ -146,12 +155,9 @@
                     resultsObj: {},
                     roundOver: false,
 
-                    hostSyncPoll: null, // an interval for host to check if all players are ready
                     validationInterval: null,
 
                     tutorialDuration: {{C.tutorial_duration_seconds}},
-                    infoModalDuration: {{C.start_modal_seconds}} * 1000,
-                    resultsModalDuration: {{C.results_modal_seconds}} * 1000,
                     gameDuration: {{C.game_duration_seconds}} * 1000,
 
                     aMax: {{C.a_max}},
@@ -165,10 +171,15 @@
                     playersPerGroup: {{C.PLAYERS_PER_GROUP}},
                     stealTimeoutMilli: {{C.steal_timeout_milli}},
                     stealTokenSlots: {{C.steal_token_slots}},
-                    reprimandAmount: {{C.officer_reprimand_amount}},
-                    balanceFrequency: {{ C.balance_update_rate }},
+                    reprimandAmount: {{group.officer_reprimand_amount}},
+                    balanceFrequency: js_vars.balance_update_rate,
 
-                    gameStart: {{player.group.game_start}}
+                    gameStart: {{player.group.game_start}},
+
+                    playerBalances: {}, // stores a dict of latest player data including balances
+
+                    pauseDuration: {{C.steal_pause_duration}},
+                    playerLocation: {},
 
                 }
             }, 
@@ -388,15 +399,26 @@
                     } else {
                         // was player the culprit
                         if (i.culprit === this.player.idInGroup) {
+                            this.$refs.stealcomponent.tempStealDisable()
                             this.stealLocation = i.steal_reset;
                             this.$refs.stealcomponent.cancelTimeout()
                             this.positionStealToken()
                         }
 
                         if (i.guilty === this.player.idInGroup) {
+                            // they were convicted/fined
                             this.fineNotification = "Fined -" + this.civilianFine;
 
                             this.stealNotification = "You were fined!";
+                            setTimeout(() => {
+                                this.stealNotification = '';
+                                this.fineNotification = '';
+                            }, 2000);
+                        } else if (i.culprit == this.player.idInGroup) {
+                            // innocent and convicted/fined
+                            this.fineNotification = "You were NOT Fined";
+
+                            this.stealNotification = "You were NOT fined!";
                             setTimeout(() => {
                                 this.stealNotification = '';
                                 this.fineNotification = '';
@@ -407,6 +429,19 @@
                         let circleSelector = '#indicator-' + i.map + '-' + i.culprit + '-circle';
                         let x = i.culprit_x - 10;
                         let y = i.culprit_y - 10;
+
+                        // ==============================================================================
+
+                        let dtElement = this.$refs.stealcomponent.$refs['defend-token'+i.token_number]
+                        let mapElement = this.$refs.stealcomponent.$refs['prop'+i.map][0].getBoundingClientRect()
+
+                        let tz = gsap.timeline();
+
+                        tz.to(dtElement, 0, {left: mapElement.x + i.token_x + 1, top: mapElement.y + i.token_y + 1});
+                        tz.to(dtElement, {visibility: 'visible'});
+                        tz.to(dtElement, {visibility: 'hidden', delay: 1});
+
+                        // ==============================================================================
 
                         let tl = gsap.timeline();
 
@@ -433,6 +468,8 @@
                         this.activeStealMaps = data.balance.active_maps;
                         let latestBalance = data.balance[this.player.idInGroup].balance;
                         this.activeSteal = data.balance[this.player.idInGroup].map;
+
+                        this.playerBalances = data.balance
 
                         if (latestBalance === this.balance) { 
                             // balance has not changed

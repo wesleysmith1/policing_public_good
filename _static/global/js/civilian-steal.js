@@ -1,9 +1,11 @@
 let civilianStealComponent = {
     components: {
+        'grain-image-component': grainImageComponent,
     },
     props: {
         maps: Array,
         groupPlayerId: Number,
+        playerLocation: Object,
         investigationCount: Number,
         defendTokenTotal: Number,
         mapSize: Number,
@@ -12,7 +14,10 @@ let civilianStealComponent = {
         activeStealMaps: Object,
         fineNotification: String,
         stealTimeoutMilli: Number,
+        pauseDuration: Number,
         stealTokenSlots: Number,
+        playerBalances: Object,
+        defendTokenSize: Number,
     },
     data: function () {
         return {
@@ -20,13 +25,15 @@ let civilianStealComponent = {
             locationx: 0,
             locationy: 0,
             timeout: null,
+            animationObject: null,
+            lowBalanceThreshold: 0, // cannot steal from civiilians less than or equal this
         }
     },
     mounted: function () {
         let that = this;
         let selector = '#location';
         Draggable.create(selector, {
-            minimumMovement: .01,
+            minimumMovement: 1,
             bounds: that.$refs.stealcontainer,
             onDragStart: function () {
                 that.locationDragStart()
@@ -38,19 +45,74 @@ let civilianStealComponent = {
 
     },
     methods: {
+        disableLocation() {
+            Draggable.get('#location').disable()
+        },
+        enableLocation() {
+            // console.log('ENABLE LOCATION IS CALLED')
+            Draggable.get('#location').enable()
+        },
+        pauseLocation() {
+            // console.log('PAUSE LOCATION IS CALLED')
+            // pause steal token so that they cannot update the server too quickly
+            this.disableLocation()
+
+            let locationLines = ["#locationline1", "#locationline2"]
+            gsap.to(locationLines, {duration: 0, stroke: 'black'});
+
+            setTimeout(() => {
+                this.enableLocation()
+                gsap.to(locationLines, {duration: 0, stroke: 'red'});
+            }, this.pauseDuration)
+        },
+        startDisableIndicator() {
+            // console.log('START DISABLE INDICATOR IS CALLED')
+            // console.log(this.stealTimeoutMilli / 1000)
+            this.animationObject = gsap.to('#testTimer', this.stealTimeoutMilli / this.pauseDuration, {ease:Linear.easeNone, width: 0});
+        },
+        resetDisableIndicator() {
+            // console.log('RESETDISABLEINDICATOR TABLE IS CALLED')
+            if (this.animationObject) {
+                //kill animation
+                this.animationObject.kill()
+            } 
+            this.animationObject = gsap.to('#testTimer', 0, {width: '200px'});
+        },
+        roundEnd() {
+            // disable tokens at end of round
+            this.disableLocation()
+        },
         cancelTimeout: function() {
+            // console.log('cancel timeout is called');
             if (this.timeout)
                 clearTimeout(this.timeout);
         },
         scheduleStealReset: function() {
             this.cancelTimeout();
 
+            this.pauseLocation()
+            this.disableLocation()
+
             this.timeout = setTimeout(() => {
+
+                this.resetDisableIndicator()
                 let num = this.randomLocation();
+
+                this.tempStealDisable()
+
                 this.$emit('location-token-timeout', num);
             }, this.stealTimeoutMilli)
         },
+        tempStealDisable: function() {
+            this.disableLocation()
+            setTimeout(() => {
+                this.enableLocation()
+            }, 250)
+        },
         setStealLocation: function() {
+
+            this.resetDisableIndicator()
+
             if (this.stealLocation === 1) {
                 gsap.to('#location', 0, {x: 0, y: 0});
                 return; // already starts in first steal location
@@ -62,6 +124,10 @@ let civilianStealComponent = {
             gsap.to('#location', 0, {x: dest.x - start.x, y: dest.y - start.y});
         },
         locationDragStart: function () {
+
+            // cancel animations here?
+            this.resetDisableIndicator()
+
             this.cancelTimeout();
 
             // check the current location to see if we need to update api
@@ -79,8 +145,18 @@ let civilianStealComponent = {
 
                     let id = parseInt(this.maps[i]) + 1;
                     if (that.hitTest(this.$refs['prop' + id], '.000001')) {
+
+                        // cannot steal from negative balance - reset token
+                        if (this.playerBalances[this.maps[i]+1][['balance']] < this.lowBalanceThreshold) { // todo: why the double brackets here?
+                            this.$emit('location-token-reset', this.randomLocation())
+                            return
+                        }
+
                         let map = this.$refs['prop' + id][0].getBoundingClientRect();
                         this.calculateLocation(map, id);
+
+                        this.startDisableIndicator()
+
                         return;
                     }
                 }
@@ -113,14 +189,21 @@ let civilianStealComponent = {
         },
         randomLocation: function () {
             return Math.floor(Math.random() * this.stealTokenSlots) + 1
-        }
+        },
+        formatBalance(id) { 
+            // console.log(this.playerBalances[groupId].balance)
+            if (this.playerBalances && this.playerBalances[id])
+                return this.playerBalances[id]['balance']
+            else    
+                return 0
+        },
     },
     watch: {
         stealLocation: function () {
             this.$nextTick(() => {
                  this.setStealLocation();
             });
-        }
+        },
     },
     template:
         `
@@ -144,15 +227,17 @@ let civilianStealComponent = {
                                   <circle :id="'indicator-' + (map+1) + '-' + (player_id + 1) + '-circle'" cx="8" cy="8" r="4" :fill="indicatorColor(player_id+1)" />
                                 </svg>
                             </div>
-                            <div class="map-label">{{map+1 == groupPlayerId ? 'You' : 'Civilian ' + (map+1)}}</div>
+                            <div class="map-label">
+                                {{map+1 == groupPlayerId ? 'You' : 'Civilian ' + (map+1) + ' '}} 
+                            </div>
                       </div>
                     </div>
                     <div class="token-container">
                         <div class="steal-locations-container">
                             <div class="steal-location" ref="steallocation1" id="steallocation1">
-                                <svg id="location" height="21" width="21">
-                                    <line x1="0" y1="0" x2="21" y2="21" class="steal-token-line"/>       
-                                    <line x1="21" y1="0" x2="0" y2="21" class="steal-token-line"/>       
+                                <svg id="location" height="21" width="21" style="position: absolute;">
+                                    <line id="locationline1" x1="0" y1="0" x2="21" y2="21" class="steal-token-line"/>       
+                                    <line id="locationline2" x1="21" y1="0" x2="0" y2="21" class="steal-token-line"/>       
                                         
                                     <circle ref="location" cx="10.5" cy="10.5" r="2" fill="black" />
                                     Sorry, your browser does not support inline SVG.  
@@ -166,7 +251,19 @@ let civilianStealComponent = {
                     </div>
               </div>
         </div>
+        <div 
+                v-for="ii in defendTokenTotal" 
+                :ref='"defend-token" + ii'
+                class="officer-unit dt-indicator" 
+                v-bind:style="{ height: defendTokenSize + 'px', width: defendTokenSize + 'px' }"
+            >
+        </div>
       </div>
+
+      <br>
+      <div id="testTimer" style="width: 200px; height: 50px; background: green; margin: auto;"></div>
+      <br>
+
       </div>
       `
 

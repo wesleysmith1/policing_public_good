@@ -94,6 +94,15 @@ html {
     box-sizing: border-box;
 }
 
+/*defend token indicator*/
+.dt-indicator {
+    position: absolute;
+    left: 0;
+    top: 0;
+    visibility: hidden;
+    z-index: 2;
+}
+
 /*intersection indicator*/
 .indicator {
     position: absolute;

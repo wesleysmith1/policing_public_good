@@ -1556,6 +1556,10 @@ class EndWait(WaitPage):
     
 class ResultsModal(Page):
     timeout_seconds = 30
+    @staticmethod
+    def get_timeout_seconds(player: Player):
+        """Players must be advanced past the practice round"""
+        return 30 if player.round_number == 2 else None
 
     @staticmethod
     def vars_for_template(player: Player):
@@ -1581,7 +1585,7 @@ class ResultsModal(Page):
         return dict(results_object=results_object)
     
 class Intermission(Page):
-    timeout_seconds = 40
+    timeout_seconds = 80
     timer_text = 'Please wait for round to start'
 
     @staticmethod
@@ -1629,6 +1633,14 @@ class Intermission(Page):
         vars_dict['officer_review_probability'] = C.officer_review_probability*100
 
         return vars_dict
+    
+
+class AfterTrialAdvancePage(Page):
+    def is_displayed(self):
+        if self.round_number == 2 or self.round_number == 7:
+            return True
+
+        return False
 
 
 page_sequence = [
@@ -1649,4 +1661,5 @@ page_sequence = [
         Main, 
         EndWait, 
         ResultsModal,
+        AfterTrialAdvancePage,
     ]

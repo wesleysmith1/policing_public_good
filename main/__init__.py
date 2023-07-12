@@ -803,7 +803,7 @@ class Main(Page):
 
     @staticmethod
     def get_timeout_seconds(player: Player):
-        return None if player.round_number == 1 else 198
+        return None if player.round_number == 1 else 15
 
     @staticmethod
     def vars_for_template(player: Player):
@@ -1555,11 +1555,10 @@ class EndWait(WaitPage):
                     player.participant.vars['balances'].append(math.floor(player.balance))
     
 class ResultsModal(Page):
-    timeout_seconds = 30
     @staticmethod
     def get_timeout_seconds(player: Player):
         """Players must be advanced past the practice round"""
-        return 30 if player.round_number == 2 else None
+        return None if player.round_number == 1 else 15
 
     @staticmethod
     def vars_for_template(player: Player):

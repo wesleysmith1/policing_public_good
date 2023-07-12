@@ -361,8 +361,9 @@
                         let labelText;
                         let labelColor;
                         if (i.officer_reprimand) {
-                            labelText = -1 * (i.officer_reprimand - i.officer_bonus);
-                            labelColor = 'red';
+                            labelText = -1 * (i.officer_reprimand - i.officer_bonus); 
+                            labelText = (i.officer_reprimand > 0 ? '+' : '-') + labelText
+                            labelColor = (i.officer_reprimand > 0 ? 'green' : 'red');
                         } else if (i.officer_bonus > 0){
                             labelText = '+' + i.officer_bonus;
                             labelColor = 'green';

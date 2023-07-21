@@ -118,8 +118,8 @@ class C(BaseConstants):
     gamma = 15
     r = 0
 
-    low_incomes = [1600, 2000, 2000, 2400]
-    high_incomes = [3200, 4000, 4000, 4800]
+    low_incomes = [0, 1600, 2000, 2000, 2400, 11111]
+    high_incomes = [0, 3200, 4000, 4000, 4800, 11111]
 
     # participants that are selected to participate in each round
     sampling_matrix = [
@@ -303,7 +303,7 @@ class Player(BasePlayer):
     map = models.IntegerField(initial=0)
     last_updated = models.FloatField(blank=True)
     roi = models.IntegerField(initial=0)
-    balance = models.FloatField(initial=C.civilian_start_balance)
+    balance = models.FloatField(initial=0)
     harvest_status = models.IntegerField(initial=0)
     harvest_screen = models.BooleanField(initial=True)
     income = models.IntegerField(initial=40)
@@ -470,7 +470,7 @@ class GameData(ExtraModel):
 
 
 # FUNCTIONS
-def get_round_incomes(round_number):
+def get_start_balances(round_number):
     if round_number == 1:
         return C.low_incomes
 
@@ -483,10 +483,8 @@ def creating_session(subsession: Subsession):
     Initialize session variables like date and relative group id
     """
 
-    # get time in miliseconds
-    time_now = time.time()
     # set session start time
-    subsession.session.vars['session_start'] = time_now
+    subsession.session.vars['session_start'] = time.time()
     subsession.session.vars['session_date'] = datetime.datetime.today().strftime('%Y%m%d')
 
     # get configurations from settings.py
@@ -520,8 +518,6 @@ def creating_session(subsession: Subsession):
             if p.is_officer():
                 p.balance = C.officer_start_balance
 
-        # ==========================================================================
-
             # demo session does not need further configuration
             if C.NUM_ROUNDS != 1:
 
@@ -543,6 +539,16 @@ def creating_session(subsession: Subsession):
         # create defend tokens for current round for each group
         for i in range(C.defend_token_total):
             DefendToken.create(number=i+1, group=group,)
+
+        # =================Mechanism=========================================================
+
+        for player in group.get_players():
+
+            income_index = player.id_in_group - 1
+
+            balances = get_start_balances(group.round_number)
+            
+            player.starting_points = player.balance = balances[income_index]
 
 
 # PAGES
@@ -944,7 +950,7 @@ class DefendTokenWaitPage(WaitPage):
 
         # n_id = list(participants.values_list('id_in_group', flat=True))
         n_id = [p.id_in_group for p in group.get_players() if p.mechanism_participant]
-        # balances = get_round_incomes(self.round_number)
+        # balances = get_start_balances(self.round_number)
 
         start = math.floor(session_start)
         file_name = "{}Session_{}_Group_{}_{}_{}.csv".format(file_path, group.session.id, player.participant.vars['group_id'], session_date, start)
@@ -1851,6 +1857,15 @@ class AfterTrialAdvancePage(Page):
 
 
 page_sequence = [
+        SurveyInitWait,
+        Wait,
+        MechanismStartModal,
+        Wait,
+        DefendTokenSurvey,
+        DefendTokenWaitPage,
+        Wait,
+        MechanismEndModal,
+        ResultsWaitPage,
         Wait, 
         Intermission, 
         StartModal, 

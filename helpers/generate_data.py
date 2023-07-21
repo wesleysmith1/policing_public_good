@@ -491,7 +491,7 @@ class GenerateCsv:
             [
                 self.C.civilian_steal_rate,
                 self.C.civilian_fine_amount,
-                self.C.defend_token_total,
+                self.meta.total_defend_tokens,
                 "a min 1 , a max 10",
                 self.C.defend_token_size,
                 self.C.civilian_map_size,
@@ -524,7 +524,7 @@ class GenerateCsv:
     
     def init_defend_tokens(self):
         x = {}
-        for i in range(1, self.C.defend_token_total+1):
+        for i in range(1, self.total_defend_tokens+1):
             x[i] = "[{}, {}, {}, {}, {}, {}]".format(i, 0, 0, 0, 0, 'NA')
         return x
 

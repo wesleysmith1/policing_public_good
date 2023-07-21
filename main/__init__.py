@@ -21,7 +21,7 @@ class C(BaseConstants):
     # CIVILIAN_START_BALANCE = 1000
 
     """Number of defend tokens officer starts with"""
-    defend_token_total = 8
+    total_tutorial_defend_tokens = 8
 
     """Fine when convicted"""
     civilian_fine_amount = 120
@@ -263,6 +263,7 @@ class Group(BaseGroup):
             income_distribution=incomes,  # todo: this needs to reflect values not keys
             player_ids_in_session=player_ids_in_session,
             reprimand=self.officer_reprimand_amount, # group reprimand amount
+            total_defend_tokens=self.total_quantity()
         )
 
         # get data
@@ -535,10 +536,6 @@ def creating_session(subsession: Subsession):
                     else:
                         # is officer
                         p.income = p.participant.vars['officer_bonus']
-
-        # create defend tokens for current round for each group
-        for i in range(C.defend_token_total):
-            DefendToken.create(number=i+1, group=group,)
 
         # =================Mechanism=========================================================
 
@@ -1041,8 +1038,15 @@ class ResultsWaitPage(WaitPage):
 class Wait(WaitPage):
     pass
 
+
 class StartWait(WaitPage):
-    pass
+    @staticmethod
+    def after_all_players_arrive(group: Group):
+        # create defend tokens for current round for each group
+        number_tokens = group.total_quantity() if group.round_number in [1,2] else C.total_tutorial_defend_tokens
+        for i in range(number_tokens):
+            DefendToken.create(number=i+1, group=group,)
+    
 
 class Main(Page):
 
@@ -1116,6 +1120,7 @@ class Main(Page):
         
         return dict(
             defend_tokens=defend_tokens,
+            total_defend_tokens=len(defend_tokens)
             start_modal_object=start_modal_object,
             harvest_screen=player.harvest_screen,
             balance_update_rate=player.session.config['balance_update_rate'],

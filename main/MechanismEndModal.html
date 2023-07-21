@@ -1,0 +1,156 @@
+{{ block title }}{{ endblock }}
+{{ block content }}
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+<script src="{% static 'global/js/grain-img.js' %}"></script>
+
+<link rel="stylesheet" type="text/css" href="{% static 'global/styles/modal.css' %}">
+
+<style>
+    .otree-timer {
+        display: none;
+    }
+</style>
+
+<div class="otree-body container">
+
+        <div id="app" style="visibility: hidden;">
+
+            <div ref="smodal" class="modal" style="display: block;">
+                <!--Modal content-->
+                <div class="modal-content start-modal">
+                    <div class="start-modal-content">
+            
+                        <div v-if="mechanismObject">
+                            <h4 style="text-align:center;">Market Over</h4>
+                            <p style="text-align: center;">Summary</p>
+                            <div class="list-group" style="width: 450px; margin: auto;">
+                                <div v-if="mechanismObject.your_quantity != null" class="list-group-item list-group-item-primary">
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <div><strong>Your quantity of the group commodity:</strong></div>
+                                        <div><strong>${mechanismObject.your_quantity.toFixed(0)}</strong></div>
+                                    </div>
+                                </div>
+                                <div v-if="mechanismObject.your_cost != null" class="list-group-item list-group-item-primary">
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <div><strong>Your cost:</strong></div>
+                                        <div><strong>${ mechanismObject.your_cost.toFixed(0) }</strong></div>
+                                    </div>
+                                </div>
+                                <div v-if="mechanismObject.total_quantity != null" class="list-group-item list-group-item-primary">
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <div><strong>Total quantity of the group commodity:</strong></div>
+                                        <div><strong>${ mechanismObject.total_quantity.toFixed(0) }</strong></div>
+                                    </div>
+                                </div>         
+                            </div>
+                            <br>
+                            <div class="list-group" style="width: 450px; margin: auto;">
+                                <div class="list-group-item list-group-item-secondary">
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <div><strong>Your starting points:</strong></div>
+                                        <div><strong>${startingPoints}</strong></div>
+                                    </div>
+                                </div>
+                                <div v-if="mechanismObject.participant_rebate & !mechanismObject.treatment == 'OGL'" class="list-group-item list-group-item-secondary">
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <div><strong>Your rebate:</strong></div>
+                                        <div><strong>${ mechanismObject.participant_rebate }</strong></div>
+                                    </div>
+                                </div>
+                                <div v-if="mechanismObject.your_cost != null" class="list-group-item list-group-item-secondary">
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <div v-if="mechanismObject.participant"><strong>Your cost:</strong></div>
+                                        <div v-else><strong>Your tax:</strong></div>
+                                        <div><strong>${ mechanismObject.your_cost.toFixed(0) }</strong></div>
+                                    </div>
+                                </div>
+                                <div v-if="mechanismObject.total_quantity != null" class="list-group-item list-group-item-secondary">
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <div><strong>Total quantity of the group commodity:</strong></div>
+                                        <div><strong>${ mechanismObject.total_quantity.toFixed(0) }</strong></div>
+                                    </div>
+                                </div>
+                                <div v-if="mechanismObject.individual_quantity != null" class="list-group-item list-group-item-secondary">
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <div><strong>Your quantity of the individual commodity:</strong></div>
+                                        <div><strong>${ mechanismObject.individual_quantity.toFixed(0) }</strong></div>
+                                    </div>
+                                </div>
+                                <!-- utility -->
+                                <div v-if="mechanismObject.balance != null" class="list-group-item list-group-item-secondary">
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <div><strong>Your payoff:</strong></div>
+                                        <div><strong>${ mechanismObject.balance.toFixed(0) }</strong></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+            
+                    </div>
+                </div>
+            </div>
+
+            
+        </div>
+</div>
+<script>
+
+    const { createApp } = Vue
+    
+    const app = createApp({
+        components: {
+            'grain-image-component': grainImageComponent,
+        },
+        compilerOptions: {
+            delimiters: ["${", "}"]
+        },
+        data() {
+            return {
+                startObject: {},
+                mechanismObject: {{mechanism_object | json}},
+                isOfficer: false,
+                startingPoints: {{player.starting_points}}
+            }
+
+        },
+        mounted() {
+            document.getElementById("app").style.visibility = "visible"
+        },
+        created() {
+            
+        },
+        methods: {
+            updateTotalQuantity: function() {
+                let temp = 0
+                for (key in this.groupQuantities) {
+                    temp += this.groupQuantities[key]
+                }
+                this.totalQuantity = temp
+            },
+            send: function(data) {
+                data.player_id = this.playerId;
+                data.group_id = this.groupId;
+                this.socket.send(JSON.stringify(data));
+            },
+        },
+        computed: {
+            officerItem() {
+                return this.isOfficer ? {fontWeight: 'bold'} : {}
+            },
+            civilianItem() {
+                return this.isOfficer ? {} : {fontWeight: 'bold'}
+            },
+            sortedIds() {
+                return []
+                // let sortedIds = Object.keys(this.startObject.civilian_incomes);
+                // sortedIds.sort((a,b) => { return this.startObject.civilian_incomes[a] - this.startObject.civilian_incomes[b] });
+                // return sortedIds
+            }
+        },
+    }).mount('#app');
+
+</script>
+
+{{ endblock }}

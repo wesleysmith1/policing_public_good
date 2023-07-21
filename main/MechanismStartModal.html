@@ -1,0 +1,123 @@
+{{ block title }}{{ endblock }}
+{{ block content }}
+
+<style>
+    .otree-timer {
+        display: none;
+    }
+
+    .slidecontainer {
+        width: 100%;
+    }
+
+    .slider {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 15px;
+        border-radius: 5px;
+        background: #d3d3d3;
+        outline: none;
+        opacity: 0.7;
+        -webkit-transition: .2s;
+        transition: opacity .2s;
+    }
+
+    .slider:hover {
+        opacity: 1;
+    }
+
+    .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        background: #04AA6D;
+        cursor: pointer;
+    }
+
+    .slider::-moz-range-thumb {
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        background: #04AA6D;
+        cursor: pointer;
+    }
+
+    svg#interactiveBar {
+        display: block;
+        margin: auto;
+    }
+</style>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+<script src="{% static 'global/js/grain-img.js' %}"></script>
+<script src="{% static 'global/js/start-modal.js' %}"></script>
+
+<link rel="stylesheet" type="text/css" href="{% static 'global/styles/modal.css' %}">
+
+<div class="otree-body container">
+
+    <div id="app" style="visibility:hidden;">
+
+        <div ref="smodal" class="modal" style="display: block;">
+            <!--Modal content-->
+            <div class="modal-content start-modal">
+                <div class="start-modal-content">
+                    <h4 style="text-align:center;">Market Beginning</h4>
+                    <div v-if="!hideSelected">
+                        <p v-if="selected" style="text-align: center;">
+                            You were selected.
+                        </p>
+                        <p v-else style="text-align: center;">
+                            You were not selected
+                        </p>
+                    </div>
+                    <div class="list-group" style="width: 350px; margin: auto;">
+                        <div class="list-group-item list-group-item-primary">
+                            <div style="display: flex; justify-content: space-between;">
+                                <div><strong>Your points:</strong></div>
+                                <div><strong>${ balance.toFixed(0) }</strong></div>
+                            </div>
+                        </div>           
+                    </div>
+        
+                </div>
+            </div>
+        </div>
+
+        
+    </div>
+</div>
+
+<script>
+    
+    const { createApp } = Vue
+    
+    const app = createApp({
+        components: {
+            'grain-image-component': grainImageComponent,
+        },
+        compilerOptions: {
+            delimiters: ["${", "}"]
+        },
+        data() {
+            return {
+                startObject: {},
+                isOfficer: false,
+                selected: "{{selected}}" == "True",
+                balance: {{player.balance}},
+                hideSelected: "{{hide_selected_text}}" == "True",
+            }
+        },
+        mounted() {
+            document.getElementById("app").style.visibility = "visible"
+        },
+        created() {},
+        methods: {},
+    }).mount('#app');
+    
+</script>
+
+{{ endblock }}

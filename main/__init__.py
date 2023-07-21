@@ -89,88 +89,12 @@ class C(BaseConstants):
         (.04, .68, .2), # 8 ...
     ]
 
-    # mechanism parameters ================================================
-
-    dt_range = 10
-    dt_payment_max = 10
-    big_n = 4
-
-    # ========================================
-
-    # treatment = "OGL"
-    # N = 4
-    # n = 4
-
-    treatment = "MGL"
-    N = 4
-    n = 2
-
-    # treatment = "MPT"
-    # N = 4
-    # n = 2
-
-    # =========================================
-
-    q = 400
-    omega = 15 # max tokens
-    gamma = 15
-    r = 0
-
-    low_incomes = [1600, 2000, 2000, 2400]
-    high_incomes = [3200, 4000, 4000, 4800]
-
-    # participants that are selected to participate in each round
-    sampling_matrix = [
-        [1,2,3,4], # tutorial
-        [1,2], # 2
-        [1,2], # 3
-        [1,3],
-        [1,3],
-        [3,4],
-        [3,4], # 7
-        [1,4], # 8
-        [1,4], # 9
-        [3,4],
-        [3,4],
-        [2,4],
-        [2,4], # 13
-        [1,2], # 14
-        [1,2], 
-        [1,3],
-        [1,3],
-        [3,4], # 18
-        [3,4], # 19
-        [1,4], # 20
-        [1,4], 
-        [3,4],
-        [3,4],
-        [2,4],
-        [2,4],
-        
-    ]
-
 
 class Subsession(BaseSubsession):
     pass
 
 
-class GameStatus:
-    SYNC = 0
-    INFO = 1
-    ACTIVE = 2
-    RESULTS = 3
-    CHOICES = (
-        (SYNC, 'Sync'),
-        (INFO, 'Start'),
-        (ACTIVE, 'Active'),
-        (RESULTS, 'Results'),
-    )
-
-
 class Group(BaseGroup):
-    # ==========mechanism============
-    mechanism_start = models.FloatField(blank=True)
-    # ===============================
 
     game_start = models.FloatField(initial=0)
     officer_bonus = models.IntegerField(initial=0)
@@ -181,16 +105,7 @@ class Group(BaseGroup):
     officer_reprimand_total = models.IntegerField(initial=0)
     intercept_total = models.IntegerField(initial=0)
 
-    game_status = models.IntegerField(choices=GameStatus.CHOICES, initial=GameStatus.SYNC)
-
     officer_reprimand_amount = models.IntegerField() # dynamic treatment variable that can change round to round
-
-    # ===========mechanism functions================
-
-    def total_quantity(self):
-        return sum(p.quantity for p in self.get_players())
-
-    # ==============================================
 
     def round_end(self):
         end_time = time.time()
@@ -297,17 +212,6 @@ def randomize_location():
 
 
 class Player(BasePlayer):
-    # ==========mechanism fields==================
-    starting_points = models.IntegerField(initial=0)
-    quantity = models.IntegerField(initial=0)
-    your_cost = models.FloatField(initial=0)
-    mechanism_participant = models.BooleanField(initial=False)
-    nonparticipant_tax = models.FloatField(initial=0)
-    your_individual_quantity = models.FloatField()
-    utility = models.FloatField()
-    participant_rebate = models.IntegerField(initial=0)
-    # ============================================
-
     x = models.FloatField(initial=0)
     y = models.FloatField(initial=0)
     map = models.IntegerField(initial=0)
@@ -323,10 +227,6 @@ class Player(BasePlayer):
     steal_total = models.FloatField(initial=0)
     victim_total = models.FloatField(initial=0)
     ready = models.BooleanField(initial=False)
-
-    # ============ mechanism functions =================
-
-    # ==================================================
 
     def print(self):
         """player print method for debugging"""
@@ -388,67 +288,6 @@ class Player(BasePlayer):
 
     def officer_reprimand(self):
         self.balance -= self.group.officer_reprimand_amount
-
-
-class MechanismInput(ExtraModel):
-    player = models.Link(Player)
-    id_in_group = models.IntegerField()
-    group = models.Link(Group)
-    quantity = models.IntegerField(initial=0)
-    created = models.FloatField()
-    round_number = models.IntegerField()
-
-    @classmethod
-    def record(cls, quantity, player_id, id_in_group, group_id, round_number):
-        # update this os it is more accurate and gives player and participant information
-        MechanismInput.create(player_id=player_id, id_in_group=id_in_group, group_id=group_id, round_number=round_number, quantity=quantity, created=time.now())
-
-    @classmethod
-    def csvHeader(cls):
-        return [
-                    "group_id", 
-                    "participants",
-                    "player_id", 
-                    "round_number", 
-                    "quantity",
-                    "group_commodities", 
-                    "starting_points",
-                    "costs", 
-                    "utilities", 
-                    "individual_commodities", 
-                    # "participant_rebates", 
-                    "nonparticipant_taxes", 
-                    "created", 
-                    "treatment",
-                    "gamma",
-                    "price",
-                    "created_withinround"
-                ]
-
-    def row(self, uo, mechanism_start, g_id):
-        """g_id is the group id per group in session and always starts at 1. It is not a unique db key"""
-        return [
-            g_id,
-            list(uo['n_id']),
-            self.id_in_group,
-            self.round_number - 1, # subtract 1 because of tutorial
-            self.quantity, 
-            uo['group_quantities'],
-            uo['starting_points'],
-            list(uo['participant_costs']), 
-            list(uo['utility']), 
-            list(uo['quantity_ind_commodity']), 
-            # list(uo['participant_rebate']), 
-            list(uo['nonparticipant_tax']), 
-            datetime.datetime.fromtimestamp(self.created).strftime('%d/%m/%Y %H:%M:%S'), 
-            C.treatment,
-            uo['gamma'],
-            uo['price'],
-            self.created - mechanism_start if mechanism_start else self.created,
-        ]
-
-    def header(self):
-        return 
 
 
 class DefendToken(ExtraModel):
@@ -554,245 +393,6 @@ def creating_session(subsession: Subsession):
 
 
 # PAGES
-# class SurveyInitWait(WaitPage):
-#     def after_all_players_arrive(group: Group):
-#         """select players that will participate in the mechanism."""
-
-#         policing = group.session.config['include_policing']
-#         if policing:
-#             selected_players = Player.filter(group_id=group.group.pk).exclude(id_in_group=1)
-#         else:
-#             selected_players = Player.filter(group_id=group.group.pk)
-
-#         if C.treatment == "OGL":
-#             selected_ids = [1,2,3,4]
-#         else:
-#             selected_ids = C.sampling_matrix[group.round_number - 1]
-
-#         for p in selected_players:
-#             # SurveyResponse.objects.create(group=self.group, player=p, response=dict(), participant=True)
-#             if p.id_in_group in selected_ids:
-#                 p.mechanism_participant=True
-
-#                 # add rebate for mgl participants
-#                 if p.mechanism_participant and C.treatment == 'MGL':
-#                     p.starting_points += 0
-#                     p.balance += 0
-                
-#                 p.save()
-
-
-# class DefendTokenSurvey(Page):
-
-#     @staticmethod
-#     def get_timeout_seconds(player: Player):
-#         if player.round_number == 1:
-#             return None
-#         else:
-#             return 45
-
-#     @staticmethod
-#     def vars_for_template(player: Player):
-
-#         if player.player.id_in_group == 1 and not player.group.mechanism_start:
-#             player.group.mechanism_start = time.time()
-
-#         constants = dict(
-#             N=C.N,
-#             n=C.n,
-#             q=C.q,
-#             gamma=C.gamma,
-#             beta=C.beta,
-#             r=C.r,
-#         )
-
-#         template_vars = dict(
-#             selected=player.mechanism_participant,
-#             dt_range=C.dt_range,
-#             dt_payment_max=C.dt_payment_max,
-#             big_n=C.PLAYERS_PER_GROUP-1,
-#             gamma=C.gamma,
-#             omega=C.omega,
-#             constants=constants,
-#         )
-
-#         return template_vars
-
-
-# class DefendTokenWaitPage(WaitPage):
-#     timeout_seconds = 80 
-#     timer_text = 'Please wait for round to start'
-
-#     @staticmethod
-#     def after_all_players_arrive(group: Group):
-#         """calculate how many defend tokens are going to be used, costs and tax.
-#         Individual survey tax is saved to survey objects here, but not applied
-#         until after round, when tax is recalculated to include costs accrued during round"""
-
-#         # calculate fields for all players
-#         quantities = Player.objects.filter(group_id=group.id).order_by('id_in_group').values_list('quantity', flat=True)
-#         balances = Player.objects.filter(group_id=group.id).order_by('id_in_group').values_list('balance', flat=True)
-
-#         participants = Player.objects.filter(group_id=group.id, mechanism_participant=True)
-#         nonparticipants = Player.objects.filter(group_id=group.id, mechanism_participant=False)
-
-#         g_id = participants[0].participant.vars['group_id']
-
-#         if group.round_number == 1 and C.treatment != 'OGL':
-
-#             utilities = calculate_utility(
-#                 C.N,
-#                 C.q,
-#                 C.gamma,
-#                 list(quantities), 
-#                 r=C.r,
-#                 betai = list(balances),
-#                 n_id = [1,2],
-#                 mechanism = C.treatment
-#                 )
-
-#             for player in participants:
-#                 if player.id_in_group in [1,2]:
-#                     player.your_cost = utilities['participant_costs'][player.id_in_group-1]
-#                     player.your_individual_quantity = utilities['quantity_ind_commodity'][player.id_in_group-1]
-#                     player.utility = utilities['utility'][player.id_in_group-1]
-#                     player.participant_rebate = C.r
-            
-#             utilities = calculate_utility(
-#                 C.N,
-#                 C.q,
-#                 C.gamma,
-#                 list(quantities), 
-#                 r=C.r,
-#                 betai = list(balances),
-#                 n_id = [3,4],
-#                 mechanism = C.treatment
-#                 )
-            
-#             for player in participants:
-#                 if player.id_in_group in [3,4]:
-#                     player.your_cost = utilities['participant_costs'][player.id_in_group-1]
-#                     player.your_individual_quantity = utilities['quantity_ind_commodity'][player.id_in_group-1]
-#                     player.utility = utilities['utility'][player.id_in_group-1]
-#                     player.participant_rebate = C.r
-#         else:
-#             utilities = calculate_utility(
-#                 C.N,
-#                 C.q,
-#                 C.gamma,
-#                 list(quantities), 
-#                 r=C.r,
-#                 betai = list(balances),
-#                 n_id = list(participants.values_list('id_in_group', flat=True)),
-#                 mechanism = C.treatment
-#                 )
-
-#             # note this code does not work if there is an officer!
-
-#             for player in participants:
-#                 player.your_cost = utilities['participant_costs'][player.id_in_group-1]
-#                 player.your_individual_quantity = utilities['quantity_ind_commodity'][player.id_in_group-1]
-#                 player.utility = utilities['utility'][player.id_in_group-1]
-
-#             for player in nonparticipants:
-#                 player.nonparticipant_tax = utilities['nonparticipant_tax'][player.id_in_group-1]
-#                 player.utility = utilities['utility'][player.id_in_group-1]
-#                 player.your_cost = utilities['participant_costs'][player.id_in_group-1]
-#                 player.your_individual_quantity = utilities['quantity_ind_commodity'][player.id_in_group-1]
-
-#         # write csv code for the round
-
-#         session_start=group.session.vars['session_start']
-#         session_date=group.session.vars['session_date']
-
-#         if 'session_identifier' in group.session.config:
-#             from delegated_punishment.helpers import write_session_dir, TimeFormatter
-#             file_path = write_session_dir(group.session.config['session_identifier'])
-#         else:
-#             file_path = 'data/'
-
-#         mechanism_inputs = MechanismInput.objects.filter(group_id=group.id).order_by('created')
-
-#         n_id = list(participants.values_list('id_in_group', flat=True))
-#         # balances = get_round_incomes(self.round_number)
-
-#         start = math.floor(session_start)
-#         file_name = "{}Session_{}_Group_{}_{}_{}.csv".format(file_path, group.session.id, player.participant.vars['group_id'], session_date, start)
-
-#         f = open(file_name, 'a', newline='')
-        
-#         with f:
-#             writer = csv.writer(f)
-
-#             # write header
-#             if group.round_number == 1: #todo: adjust this to exclude practice rounds
-#                 writer.writerow(MechanismInput.csvHeader())
-
-#             group_quantities = [0,0,0,0]
-#             for mi in mechanism_inputs:
-
-#                 # update group quantities
-#                 group_quantities[mi.id_in_group-1] = mi.quantity
-
-#                 utility_obj = calculate_utility(
-#                     C.N,
-#                     C.q,
-#                     C.gamma,
-#                     group_quantities, 
-#                     r=C.r,
-#                     betai = list(balances),
-#                     n_id = n_id,
-#                     mechanism = C.treatment
-#                 )
-
-#                 if group.round_number != 1:
-#                     writer.writerow(mi.row(utility_obj, group.mechanism_start, g_id))
-
-#         # update player balance to their calculated utility
-#         for player in group.get_players():
-#             player.balance = player.utility
-            
-#             # players cannot earn a utility less than 0
-#             player.balance = 0 if player.balance < 0 else player.balance
-
-
-# class EndModal(Page):
-#     @staticmethod
-#     def get_timeout_seconds(player: Player):
-#         if player.round_number == 1:
-#             return None
-#         else:
-#             return 10
-
-#     @staticmethod
-#     def vars_for_template(player: Player):
-
-#         # tutorial everyone is a participant so totals are taken from subgroups
-#         if player.round_number == 1 and C.treatment != 'OGL':
-#             if player.player.id_in_group in [1,2]:
-#                 total_quantity = player.group.get_player_by_id(1).quantity + player.group.get_player_by_id(2).quantity
-#             else:
-#                 total_quantity = player.group.get_player_by_id(3).quantity + player.group.get_player_by_id(4).quantity
-#         else:
-#             total_quantity = player.group.total_quantity()
-
-        
-#         return dict(
-#             mechanism_object=dict(
-#                 your_quantity=player.quantity, 
-#                 your_cost=player.your_cost,
-#                 total_quantity=total_quantity,
-#                 nonparticipant_tax=player.nonparticipant_tax,
-#                 individual_quantity=player.your_individual_quantity,
-#                 utility=player.utility,
-#                 participant_rebate=player.participant_rebate,
-#                 treatment=C.treatment,
-#                 balance=player.balance,
-#                 participant=player.mechanism_participant
-#             )
-#         )
-
-
 class Wait(WaitPage):
     pass
 
@@ -824,8 +424,6 @@ class Main(Page):
                 round_number=player.round_number,
                 jdata=json.dumps(game_data_dict)
             )
-
-            print(f'GAME DATA CREATED {x}')
     
         return dict(
             tutorial=C.NUM_ROUNDS > 1 and player.round_number == 1
@@ -874,7 +472,6 @@ class Main(Page):
         return dict(
             defend_tokens=defend_tokens,
             start_modal_object=start_modal_object,
-            game_status=player.group.field_maybe_none('game_status'),
             harvest_screen=player.harvest_screen,
             balance_update_rate=player.session.config['balance_update_rate'],
             player=dict(
@@ -928,7 +525,6 @@ class Main(Page):
                 jdata=json.dumps(game_data_dict)
             )
 
-            print(f'harvest thing changed balance {player.balance}')
         elif data.get('toggle'):
 
             game_data_dict = {}
@@ -978,20 +574,14 @@ class Main(Page):
                 round_number=player.round_number,
                 jdata=json.dumps(game_data_dict)
             )
-
-            print(f'toggle event: harvest screen {player.harvest_screen}, \
-                  harvest status {player.harvest_status}')
             
         elif data.get('defend_token_drag'):
-
-            print('defend_token_drag event')
 
             dtoken = data['defend_token_drag']
             token_num = dtoken['number']
 
             try:
                 token = DefendToken.filter(group=player.group, number=token_num)[0]
-                print(f'here is the token {token}')
             except:
                 token = None
 
@@ -1028,8 +618,6 @@ class Main(Page):
 
         elif data.get('steal_token_timeout'):
             
-            print('steal_token_timeout event')
-
             location = data['steal_token_timeout']['steal_location']
 
             game_data_dict = {
@@ -1059,8 +647,6 @@ class Main(Page):
 
             player.x = player.y = player.map = 0
 
-            player.print()
-
             GameData.create(
                 event_time=event_time,
                 p=player.id_in_group,
@@ -1071,8 +657,6 @@ class Main(Page):
             )
 
         elif data.get('steal_token_drag'):
-
-            print('steal_token_drag event')
 
             game_data_dict = {
                 "event_type": "steal_token_drag",
@@ -1105,8 +689,6 @@ class Main(Page):
 
             player.x = player.y = player.map = 0
 
-            player.print()
-
             GameData.create(
                 event_time=event_time,
                 p=player.id_in_group,
@@ -1117,8 +699,6 @@ class Main(Page):
             )
 
         elif data.get('defend_token_reset'):
-
-            print('defend_token_reset event')
 
             token_number = data['defend_token_reset']['number']
             token_slot = data['defend_token_reset']['slot']
@@ -1141,8 +721,6 @@ class Main(Page):
 
         elif data.get('steal_token_reset'):
 
-            print('steal_token_reset event')
-
             game_data_dict = {
                 "event_type": "steal_token_reset",
                 "event_time": event_time,
@@ -1159,8 +737,6 @@ class Main(Page):
             )
 
         elif data.get('investigation_update'):
-
-            print('investigation_update event')
 
             i_token = data['investigation_update']
             token_num = i_token['number']
@@ -1194,7 +770,6 @@ class Main(Page):
 
             return {0: {'investigation_update': token_count}}
         else:
-            print('other events?')
 
             game_data_dict = {}
 
@@ -1291,8 +866,6 @@ class Main(Page):
                 player.y = y
                 player.map = map
 
-                player.print()
-
                 game_data_dict.update({
                     "event_type": "steal_token_update",
                     "event_time": event_time,
@@ -1353,8 +926,6 @@ class Main(Page):
                     # get victim object and update roi
                     victim = player.group.get_player_by_id(player.map)
                     victim.decrease_roi(event_time, False)
-
-                    victim.print()
 
                     game_data_dict.update({
                         "victim": victim.id_in_group,
@@ -1487,8 +1058,6 @@ class Main(Page):
             if total_inter > 0:
                 return {0: {'intersections': intersections,
                         'officer_history': officer_history}}
-
-        player.print()
 
 class StartModal(Page):
     timeout_seconds = 15 
@@ -1643,16 +1212,6 @@ class AfterTrialAdvancePage(Page):
 
 
 page_sequence = [
-        # ==mechanism pages==
-        # SurveyInitWait,
-        # Wait,
-        # MechanismStartModal,
-        # Wait,
-        # DefendTokenSurvey,
-        # Wait,
-        # MechanismEndModal,
-        # ResultsWaitPage,
-        # ==game pages==
         Wait, 
         Intermission, 
         StartModal, 

@@ -447,7 +447,7 @@ class GenerateCsv:
             with f:
                 writer = csv.writer(f)
                 # write header
-                if self.C.NUM_ROUNDS == 1 or round_number == 3:
+                if round_number == 3:
                     writer.writerow(self.csv_header())
                 for row in players[i].rows:
                     writer.writerow(self.format_row(i, row, round_start, self.meta_data, players[i].id_in_session))
@@ -491,7 +491,7 @@ class GenerateCsv:
             [
                 self.C.civilian_steal_rate,
                 self.C.civilian_fine_amount,
-                self.meta.total_defend_tokens,
+                meta_data['total_defend_tokens'],
                 "a min 1 , a max 10",
                 self.C.defend_token_size,
                 self.C.civilian_map_size,
@@ -524,7 +524,7 @@ class GenerateCsv:
     
     def init_defend_tokens(self):
         x = {}
-        for i in range(1, self.total_defend_tokens+1):
+        for i in range(1, self.meta_data['total_defend_tokens']+1):
             x[i] = "[{}, {}, {}, {}, {}, {}]".format(i, 0, 0, 0, 0, 'NA')
         return x
 

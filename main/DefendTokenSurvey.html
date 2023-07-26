@@ -108,7 +108,6 @@
                 <ogl-component
                     :player-id="playerId"   
                     :payment-max="paymentMax"
-                    :big-n="bigN"
                     :provisional-totals="provisionalTotals"
                     :total-quantity="totalQuantity"
                     :player-quantity="playerQuantity"
@@ -121,7 +120,6 @@
                     :plus="plus"
                     :minus="minus"
                     :your-cost="yourCost"
-                    :utility="utility"
                     @update="update"
                 ></ogl-component>
 
@@ -161,7 +159,6 @@
                 groupQuantities: {},
                 playerQuantity: {{player.quantity}},
 
-                bigN: {{big_n}},
                 gamma: {{gamma}},
                 omega: {{omega}},
                 title: '',
@@ -178,7 +175,6 @@
 
                 costSocketReconnectCount: 0,
 
-                utility: 0,
             }
 
         },
@@ -197,7 +193,7 @@
             
             this.setTitle();
 
-            setTimeout(() => {this.sendCalculateCost()}, 1)
+            setTimeout(() => {this.sendCalculateCost()}, 1000)
         },
         created() {
         },
@@ -234,9 +230,6 @@
             },
             receive(data) {
                 console.log('data received', data)
-                // if (!this.playerSelected) {
-                //     return
-                // }
 
                 if (data.type == 'quantity_update') {
                     console.log('quantity update')
@@ -261,7 +254,6 @@
                     this.plus = data.plus
                     this.minus = data.minus
                     this.yourCost = data.cost
-                    this.utility = data.utility
                     console.log(data)
                 }
             }

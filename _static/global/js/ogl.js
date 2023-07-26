@@ -11,7 +11,6 @@ let oglComponent = {
         playerQuantity: Number,
         playerId: Number,
         idInGroup: Number,
-        bigN: Number,
         gamma: Number,
         omega: Number,
         constants: Object,
@@ -20,7 +19,6 @@ let oglComponent = {
         plus: Number,
         minus: Number,
         yourCost: Number,
-        utility: Number,
     },
     data: function () {
         return {
@@ -160,7 +158,7 @@ let oglComponent = {
         </div>
 
         <br>
-        <h4 style="text-align: center;">Your payoff: {{utility.toFixed(0)}}</h4>
+        <h4 style="text-align: center;">Your payoff: {{}}</h4>
         <br>
       
         <div class="slidecontainer">

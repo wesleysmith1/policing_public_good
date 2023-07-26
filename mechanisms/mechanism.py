@@ -76,7 +76,7 @@ def calculate_cost(N, gam, E, e, qq, n_id, mechanism="OGL", r=0):
 
     em = []
     for id in n_id:
-        em.append(E[id-1])
+        em.append(E[id-2])
     E = em
 
     # n = len(E)
@@ -100,76 +100,6 @@ def calculate_cost(N, gam, E, e, qq, n_id, mechanism="OGL", r=0):
         cost_theta = calculate_theta(E, e, gam, n)
             
         return cost_baseshare + cost_varpenalty - cost_theta
-
-def calculate_utility(
-        N, 
-        price, 
-        gam, 
-        e, 
-        r=0, 
-        betai = np.array([1700, 2000, 2000, 2300]), 
-        n_id = np.array([1, 3]), 
-        mechanism = "OGL"
-    ):
-
-    if (mechanism == "OGL"):
-        n_id = np.array([1,2,3,4])
-              
-    em = []
-    for id in n_id:
-        em.append(e[id-1])
-        
-    n = len(n_id)  
-            
-    if (mechanism == "OGL"):
-        participant_costs = calculate_costs(N, gam, em, price, r=r, mechanism = mechanism)
-        
-        nonparticipant_tax = rebate = np.repeat(a = 0, repeats = N)
-
-    else:
-                
-        # this is a bad way to get the participant costs array to grow to N, where indexes not included in n_id are 0
-        participant_costs = calculate_costs(N, gam, em, price, r=r, mechanism = mechanism)
-        residual_costs = sum(em) * price - sum(participant_costs)
-
-        mgl_rebate = 0 if mechanism == "MGL" else 0
-        
-        # this is for csv only ========================
-        nonparticipant_tax = np.repeat( a = residual_costs / (N - n) + mgl_rebate, repeats = N)
-        nonparticipant_tax[[i-1 for i in n_id]] = 0
-            
-        # rebate is added for nonparticipants here
-        rebate = np.repeat(a = -mgl_rebate, repeats = N)
-        rebate[[i-1 for i in n_id]] = -mgl_rebate
-        # =============================================
-        
-        # initialize costs for all participants. rebate deducted for nonparticipants here
-        temp_costs = np.repeat( a = residual_costs / (N - n) + mgl_rebate, repeats = N)
-        temp_costs[[ i-1 for i in n_id]] = participant_costs
-        participant_costs = temp_costs
-                                    
-    xi = betai - participant_costs
-
-    xi_with_negative = xi.copy()
-    xi[xi < 0] = 0
-
-    ui = np.sqrt(xi) * np.sqrt(sum(em))
-    
-    return dict(
-        participant_costs=participant_costs,
-        quantity_ind_commodity=xi,
-        quantity_ind_commodity_with_negatives=xi_with_negative,
-        utility=ui,
-        participant_rebate=rebate,
-        nonparticipant_tax=nonparticipant_tax,
-        group_quantities=e,
-        starting_points=betai,
-        gamma=gam,
-        price=price,
-        n_id=n_id
-    )
-
-# ====================================================================================
 
 def format_decimal(d):
     return str(d).rstrip('0').rstrip('.')

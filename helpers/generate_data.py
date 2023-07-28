@@ -56,7 +56,9 @@ class GenerateCsv:
         except:
             tf = None
 
-        players = self.init_players(session_start, steal_starts, player_ids_in_session, tf)
+        starting_balances=self.meta_data.starting_balances
+
+        players = self.init_players(session_start, steal_starts, player_ids_in_session, tf, starting_balances)
 
         for event in self.game_data:
             # get JSON data

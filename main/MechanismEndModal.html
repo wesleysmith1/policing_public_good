@@ -28,7 +28,7 @@
                             <div class="list-group" style="width: 450px; margin: auto;">
                                 <div v-if="mechanismObject.your_quantity != null" class="list-group-item list-group-item-primary">
                                     <div style="display: flex; justify-content: space-between;">
-                                        <div><strong>Your quantity of the group commodity:</strong></div>
+                                        <div><strong>Your quantity:</strong></div>
                                         <div><strong>${mechanismObject.your_quantity.toFixed(0)}</strong></div>
                                     </div>
                                 </div>
@@ -40,7 +40,7 @@
                                 </div>
                                 <div v-if="mechanismObject.total_quantity != null" class="list-group-item list-group-item-primary">
                                     <div style="display: flex; justify-content: space-between;">
-                                        <div><strong>Total quantity of the group commodity:</strong></div>
+                                        <div><strong>Total quantity :</strong></div>
                                         <div><strong>${ mechanismObject.total_quantity.toFixed(0) }</strong></div>
                                     </div>
                                 </div>         
@@ -49,7 +49,7 @@
                             <div class="list-group" style="width: 450px; margin: auto;">
                                 <div class="list-group-item list-group-item-secondary">
                                     <div style="display: flex; justify-content: space-between;">
-                                        <div><strong>Your starting points:</strong></div>
+                                        <div><strong>Your starting balance:</strong></div>
                                         <div><strong>${startingPoints}</strong></div>
                                     </div>
                                 </div>
@@ -68,20 +68,13 @@
                                 </div>
                                 <div v-if="mechanismObject.total_quantity != null" class="list-group-item list-group-item-secondary">
                                     <div style="display: flex; justify-content: space-between;">
-                                        <div><strong>Total quantity of the group commodity:</strong></div>
+                                        <div><strong>Total quantity:</strong></div>
                                         <div><strong>${ mechanismObject.total_quantity.toFixed(0) }</strong></div>
                                     </div>
                                 </div>
-                                <div v-if="mechanismObject.individual_quantity != null" class="list-group-item list-group-item-secondary">
-                                    <div style="display: flex; justify-content: space-between;">
-                                        <div><strong>Your quantity of the individual commodity:</strong></div>
-                                        <div><strong>${ mechanismObject.individual_quantity.toFixed(0) }</strong></div>
-                                    </div>
-                                </div>
-                                <!-- utility -->
                                 <div v-if="mechanismObject.balance != null" class="list-group-item list-group-item-secondary">
                                     <div style="display: flex; justify-content: space-between;">
-                                        <div><strong>Your payoff:</strong></div>
+                                        <div><strong>Current balance:</strong></div>
                                         <div><strong>${ mechanismObject.balance.toFixed(0) }</strong></div>
                                     </div>
                                 </div>

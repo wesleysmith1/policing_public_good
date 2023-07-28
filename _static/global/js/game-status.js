@@ -20,9 +20,12 @@ let gameStatusComponent = {
     },
     data: function () {
         return {
-            probInnocent: [20,18,16,14,12,10,8,6,4],
-            probCulprit: [20,26,32,38,44,50,56,62,68]
+            probInnocent: [
+                25.00,23.33,21.67,20.00,18.33,16.67,15.00,13.33,11.67,10.00,8.33,6.67,5.00,3.33,1.67,0
+            ],
+            probCulprit: [25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100]
         }
+
     },
     mounted: function () {
 
@@ -34,6 +37,7 @@ let gameStatusComponent = {
     },
     computed: {
         probabilityCulprit() {
+            return this.investigationCount > 15 ? this.probCulprit[this.investigationCount] : 100
 
             // todo do we need the amax thing anymore?
             return this.probCulprit[this.investigationCount]
@@ -48,7 +52,7 @@ let gameStatusComponent = {
             }
         },
         probabilityInnocent() {
-            let innocent = this.probInnocent[this.investigationCount]
+            let innocent = this.investigationCount > 15 ? this.probInnocent[this.investigationCount] : 0
 
             // calculate probability of officer reprimand because it depends on probability innocent
             if (this.isOfficer) {

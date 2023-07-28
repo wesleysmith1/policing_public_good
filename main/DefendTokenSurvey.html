@@ -125,7 +125,10 @@
 
             </div>
             <div v-else>
-                <h3>
+                <h3 v-if="inInGroup == 1">
+                    Please wait for the round to begin.
+                </h3>
+                <h3 v-else>
                     You were not selected for the survey this round. Please wait patiently for the results.
                 </h3>
             </div>

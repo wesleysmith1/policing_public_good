@@ -21,7 +21,7 @@ class C(BaseConstants):
     # CIVILIAN_START_BALANCE = 1000
 
     """Number of defend tokens officer starts with"""
-    total_tutorial_defend_tokens = 15 #8
+    total_tutorial_defend_tokens = 8
 
     """Fine when convicted"""
     civilian_fine_amount = 120
@@ -80,15 +80,22 @@ class C(BaseConstants):
     # key=#probabilities -> innocent, culprit, prob nobody
     # the index
     calculated_probabilities = [
-        (.2, .2, .2), # 0 defense tokens tokens
-        (.18, .26, .2), # 1 defense ...
-        (.16, .32, .2), # 2 ...
-        (.14, .38, .2), # 3 ...
-        (.12, .44, .2), # 4 ...
-        (.10, .50, .2), # 5 ...
-        (.08, .56, .2), # 6 ...
-        (.06, .62, .2), # 7 ...
-        (.04, .68, .2), # 8 ...
+        (.2500, .25, 0), # 0 defense tokens tokens
+        (.2333, .30, 0), # 1 defense ...
+        (.2167, .35, 0), # 2 ...
+        (.2000, .40, 0), # 3 ...
+        (.1833, .45, 0), # 4 ...
+        (.1667, .50, 0), # 5 ...
+        (.1500, .55, 0), # 6 ...
+        (.1333, .60, 0), # 7 ...
+        (.1167, .65, 0), # 8 ...
+        (.1000, .70, 0), # 9 ...
+        (.0833, .75, 0), # 10 ...
+        (.0667, .80, 0), # 11 ...
+        (.0500, .85, 0), # 12 ...
+        (.0333, .90, 0), # 13 ...
+        (.0167, .95, 0), # 14 ...
+        (.0000, 1, 0), # 15 ...
     ]
 
     # ==============================Mechanism==========================================
@@ -811,7 +818,7 @@ class DefendTokenWaitPage(WaitPage):
         session_start=group.session.vars['session_start']
         session_date=group.session.vars['session_date']
         start = math.floor(session_start)
-        file_name = "{}Session_{}_Group_{}_{}_{}.csv".format(file_path, group.session.id, g_id, session_date, start)
+        file_name = "{}Session_{}_Group_{}_{}_{}_mechanism.csv".format(file_path, group.session.id, g_id, session_date, start)
 
         # calculate fields for all players
         quantities = [p.quantity for p in group.get_players() if not p.is_officer()]
@@ -867,9 +874,6 @@ class DefendTokenWaitPage(WaitPage):
 
         n_id = [p.id_in_group for p in group.get_players() if p.mechanism_participant and not p.is_officer()]
 
-        start = math.floor(session_start)
-        file_name = "{}Session_{}_Group_{}_{}_{}_mechanism.csv".format(file_path, group.session.id, g_id, session_date, start)
-
         f = open(file_name, 'a', newline='')
         
         with f:
@@ -893,12 +897,6 @@ class DefendTokenWaitPage(WaitPage):
                 if group.round_number != 1:
                     writer.writerow(mi.row(csv_data, group.mechanism_start, g_id))
 
-        # update player balance to their calculated utility
-        for player in group.get_players():
-            
-            # players cannot earn a utility less than 0
-            player.balance = 0 if player.balance < 0 else player.balance
-
 
 class MechanismEndModal(Page):
 
@@ -908,10 +906,10 @@ class MechanismEndModal(Page):
 
     @staticmethod
     def get_timeout_seconds(player: Player):
-        if player.round_number == 1:
+        if player.round_number == 3:
             return None
         else:
-            return 10
+            return 10000
 
     @staticmethod
     def vars_for_template(player: Player):

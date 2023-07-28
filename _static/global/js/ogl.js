@@ -158,7 +158,6 @@ let oglComponent = {
         </div>
 
         <br>
-        <h4 style="text-align: center;">Your payoff: {{}}</h4>
         <br>
       
         <div class="slidecontainer">

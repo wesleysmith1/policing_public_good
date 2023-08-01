@@ -18,8 +18,6 @@ class C(BaseConstants):
     civilians_per_group = 5
     NUM_ROUNDS = 12
 
-    # CIVILIAN_START_BALANCE = 1000
-
     """Number of defend tokens officer starts with"""
     total_tutorial_defend_tokens = 8
 
@@ -125,8 +123,8 @@ class C(BaseConstants):
     gamma = 15
     r = 0
 
-    low_incomes = [0, 1600, 2000, 2000, 2400, 11111]
-    high_incomes = [0, 3200, 4000, 4000, 4800, 11111]
+    low_balances = [1400, 1600, 2000, 2000, 2400, 11111]
+    high_balances = [1400, 3200, 4000, 4000, 4800, 11111]
 
     # participants that are selected to participate in each round
     sampling_matrix = [
@@ -480,9 +478,9 @@ class GameData(ExtraModel):
 # FUNCTIONS
 def get_start_balances(round_number):
     if round_number == 1:
-        return C.low_incomes
+        return C.low_balances
 
-    return C.high_incomes if round_number % 2 == 1 else C.low_incomes
+    return C.high_balances if round_number % 2 == 1 else C.low_balances
 
 def creating_session(subsession: Subsession):
     """

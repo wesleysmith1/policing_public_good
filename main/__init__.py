@@ -46,7 +46,7 @@ class C(BaseConstants):
     civilian_map_size = 200 * 1.5
 
     """Probability innocent and guilty are calculated when the number of investigation tokens is >= this number"""
-    a_max = 6
+    a_max = 16
     """todo: label this correctly... find out where this is from and why it is needed...."""
     beta = 18
     """

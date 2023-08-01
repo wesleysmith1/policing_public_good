@@ -965,7 +965,7 @@ class Main(Page):
 
     @staticmethod
     def get_timeout_seconds(player: Player):
-        return None if player.round_number == 1 else 9000 #150
+        return None if player.round_number == 1 else 150
 
     @staticmethod
     def vars_for_template(player: Player):

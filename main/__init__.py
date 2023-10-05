@@ -16,10 +16,10 @@ class C(BaseConstants):
     NAME_IN_URL = 'main'
     PLAYERS_PER_GROUP = 6
     civilians_per_group = 5
-    NUM_ROUNDS = 12
+    NUM_ROUNDS = 13
 
     """Number of defend tokens officer starts with"""
-    total_tutorial_defend_tokens = 8
+    total_tutorial_defend_tokens = 20 #8
 
     """Fine when convicted"""
     civilian_fine_amount = 120
@@ -34,7 +34,7 @@ class C(BaseConstants):
     m = 200
     h = 800
     # treatment variables including tutorial
-    officer_reprimand_amount = [l,l,l,l,l,l,l,m,m,m,m,m]
+    officer_reprimand_amount = [l,l,l,l,l,l,l,l,m,m,m,m,m]
 
     """Officer income (bonus). One for each group"""
     officer_income = 50
@@ -70,9 +70,6 @@ class C(BaseConstants):
     reset to any of the slots 
     """
     steal_token_slots = 20
-
-    officer_start_balance = 1400
-    civilian_start_balance = 1400
 
         # probability calculations
     # key=#probabilities -> innocent, culprit, prob nobody
@@ -123,39 +120,23 @@ class C(BaseConstants):
     gamma = 15
     r = 0
 
-    low_balances = [1400, 1600, 2000, 2000, 2400, 11111]
-    high_balances = [1400, 3200, 4000, 4000, 4800, 11111]
+    balances = [1400, 1400, 1400, 1400, 1400, 1400]
 
     # participants that are selected to participate in each round
     sampling_matrix = [
         [2,3,4,5,6], # tutorial [1,2,3,4]
         [2,3,4,5,6], # tutorial [1,2,3,4]
         [2,3,4,5,6], # tutorial [1,2,3,4]
-        [2,3], # 4
-        [2,3], # 5
+        [2,5],
+        [3,4],
+        [2,6],
+        [4,5],
+        [2,3],
+        [5,6],
         [2,4],
-        [2,4],
-        [4,5],
-        [4,5], # 9
-        [2,5], # 10
-        [2,5], # 11
-        [4,5],
-        [4,5],
         [3,5],
-        [3,5], # 15
-        [2,3], # 16
-        [2,3], 
-        [2,4],
-        [2,4],
-        [4,5], # 20
-        [4,5], # 21
-        [2,5], # 22
-        [2,5], 
-        [4,5],
-        [4,5],
-        [3,5],
-        [3,5],
-
+        [4,6],
+        [3,6],     
     ]
 
     # =================================================================================
@@ -270,7 +251,8 @@ class Group(BaseGroup):
             income_distribution=incomes,  # todo: this needs to reflect values not keys
             player_ids_in_session=player_ids_in_session,
             reprimand=self.officer_reprimand_amount, # group reprimand amount
-            total_defend_tokens=self.total_quantity()
+            total_defend_tokens=self.total_quantity(),
+            starting_balances=[p.starting_points for p in players],
         )
 
         # get data
@@ -476,12 +458,6 @@ class GameData(ExtraModel):
 
 
 # FUNCTIONS
-def get_start_balances(round_number):
-    if round_number == 1:
-        return C.low_balances
-
-    return C.high_balances if round_number % 2 == 1 else C.low_balances
-
 def creating_session(subsession: Subsession):
     """
     Initialie balances and incomes for officers and players for tutorial, practice, 
@@ -497,7 +473,7 @@ def creating_session(subsession: Subsession):
     config_key = subsession.session.config['civilian_income_config']
 
     round_incomes = IncomeDistributions.get_group_income_distribution(config_key, subsession.round_number)
-
+    
     # this code is the terrible way that officer income is determined for session
     if subsession.round_number == 1:
         for index, group in enumerate(subsession.get_groups()):
@@ -521,14 +497,11 @@ def creating_session(subsession: Subsession):
             p.participant.vars['balances'] = []
             p.participant.vars['steal_start'] = p.steal_start
 
-            if p.is_officer():
-                p.balance = C.officer_start_balance
-
             # demo session does not need further configuration
             if C.NUM_ROUNDS != 1:
 
                 # check if round is tutorial or trial round
-                if group.round_number < 3:
+                if group.round_number < 4:
                     if p.id_in_group > 1:
                         p.income = p.session.config['tutorial_civilian_income']
                     else:
@@ -548,7 +521,7 @@ def creating_session(subsession: Subsession):
 
             income_index = player.id_in_group - 1
 
-            balances = get_start_balances(group.round_number)
+            balances = C.balances
             
             player.starting_points = player.balance = balances[income_index]
 
@@ -894,54 +867,6 @@ class DefendTokenWaitPage(WaitPage):
 
                 if group.round_number != 1:
                     writer.writerow(mi.row(csv_data, group.mechanism_start, g_id))
-
-
-class MechanismEndModal(Page):
-
-    @staticmethod
-    def is_displayed(player: Player):
-        return player.round_number > 2
-
-    @staticmethod
-    def get_timeout_seconds(player: Player):
-        if player.round_number == 3:
-            return None
-        else:
-            return 10000
-
-    @staticmethod
-    def vars_for_template(player: Player):
-
-        # tutorial everyone is a participant so totals are taken from subgroups
-        if player.round_number == 1 and C.treatment != 'OGL':
-            if player.id_in_group in [2,3]:
-                total_quantity = player.group.get_player_by_id(2).quantity + player.group.get_player_by_id(3).quantity
-            else:
-                total_quantity = player.group.get_player_by_id(4).quantity + player.group.get_player_by_id(5).quantity
-        else:
-            total_quantity = player.group.total_quantity()
-
-        
-        return dict(
-            mechanism_object=dict(
-                your_quantity=player.quantity, 
-                your_cost=player.your_cost,
-                total_quantity=total_quantity,
-                participant_rebate=player.participant_rebate,
-                treatment=C.treatment,
-                balance=player.balance,
-                participant=player.mechanism_participant
-            )
-        )
-    
-
-class ResultsWaitPage(WaitPage):
-    def after_all_players_arrive(self):
-        # # recalculate taxes and update player balances
-
-        if self.round_number != 1:
-            for player in self.group.get_players():
-                player.participant.vars['balances'].append(math.floor(player.balance))
 
 
 class Wait(WaitPage):
@@ -1623,21 +1548,42 @@ class Main(Page):
                         'officer_history': officer_history}}
 
 class StartModal(Page):
-    timeout_seconds = 15 
 
     @staticmethod
-    def is_displayed(player: Player):
-        # only mechanism in round 3
-        return player.round_number != 3
+    def get_timeout_seconds(player: Player):
+        """Players must be advanced past the practice round"""
+        return None if player.round_number == 3 else 15
     
     @staticmethod
     def vars_for_template(player: Player):
+
+        # tutorial everyone is a participant so totals are taken from subgroups
+        if player.round_number == 1 and C.treatment != 'OGL':
+            if player.id_in_group in [2,3]:
+                total_quantity = player.group.get_player_by_id(2).quantity + player.group.get_player_by_id(3).quantity
+            else:
+                total_quantity = player.group.get_player_by_id(4).quantity + player.group.get_player_by_id(5).quantity
+        else:
+            total_quantity = player.group.total_quantity()
+
+        
+        mechanism_object=dict(
+            your_quantity=player.quantity, 
+            your_cost=player.your_cost,
+            total_quantity=total_quantity,
+            participant_rebate=player.participant_rebate,
+            treatment=C.treatment,
+            balance=player.balance,
+            participant=player.mechanism_participant,
+            starting_points=player.starting_points,
+        )
+        
         # income configuration number
         config_key = player.session.config['civilian_income_config']
         lth = player.session.config['civilian_income_low_to_high']
 
         civilian_ids = [x + C.PLAYERS_PER_GROUP - C.civilians_per_group for x in
-               range(1, C.PLAYERS_PER_GROUP + 1)]
+            range(1, C.PLAYERS_PER_GROUP + 1)]
 
         if player.round_number < 3:  # tutorial or practice round
             tut_civ_income = player.session.config['tutorial_civilian_income']
@@ -1669,6 +1615,7 @@ class StartModal(Page):
 
         return dict(
                 start_modal_object=start_modal_object,
+                mechanism_object=mechanism_object,
             )
 
 
@@ -1687,9 +1634,9 @@ class EndWait(WaitPage):
             group.generate_results()
 
             # only for periods 4+0
-            if group.round_number > 3 or C.NUM_ROUNDS == 1:
+            if group.round_number > 3:
                 for player in group.get_players():
-                    player.participant.vars['balances'].append(math.floor(player.balance))
+                    player.participant.vars['balances'].append(math.floor(player.balance))  
     
 class ResultsModal(Page):
     @staticmethod
@@ -1715,7 +1662,6 @@ class ResultsModal(Page):
         if player.is_officer():
             officer_results = dict(
 
-                officer_base_pay=C.officer_start_balance,
                 fines=player.group.civilian_fine_total,
                 reprimands=player.group.officer_reprimand_total,
                 officer_reprimand_amount=player.group.officer_reprimand_amount,
@@ -1732,7 +1678,7 @@ class Intermission(Page):
     @staticmethod
     def is_displayed(player: Player):
 
-        if C.NUM_ROUNDS > 1 and (player.round_number == 2 or player.round_number == 4 or player.round_number == 9):
+        if player.round_number == 2 or player.round_number == 4 or player.round_number == 9:
             return True
         else:
             return False
@@ -1768,7 +1714,7 @@ class Intermission(Page):
             vars_dict['officer_bonus'] = player.session.config['tutorial_officer_bonus']
             info = 'We are about to perform a practice period to ensure everyone is familiar with the computer interface.'
         else:
-            info = 'We are about to perform 4 rounds sequentially.'
+            info = 'We are about to perform 5 rounds sequentially.'
 
         vars_dict['info'] = info
         vars_dict['officer_review_probability'] = C.officer_review_probability*100
@@ -1778,7 +1724,7 @@ class Intermission(Page):
 
 class AfterTrialAdvancePage(Page):
     def is_displayed(self):
-        if self.round_number == 2 or self.round_number == 3 or self.round_number == 7:
+        if self.round_number == 2:
             return True
 
         return False
@@ -1793,9 +1739,6 @@ page_sequence = [
         DefendTokenSurvey,
         DefendTokenWaitPage,
         Wait,
-        MechanismEndModal,
-        ResultsWaitPage,
-        Wait, 
         StartModal, 
         StartWait, 
         Main, 

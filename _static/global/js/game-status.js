@@ -21,7 +21,8 @@ let gameStatusComponent = {
     data: function () {
         return {
             probInnocent: [
-                25.00,23.33,21.67,20.00,18.33,16.67,15.00,13.33,11.67,10.00,8.33,6.67,5.00,3.33,1.67,0
+                [25.00,23.33,21.67,20.00,18.33,16.67,15.00,13.33,11.67,10.00,8.33,6.67,5.00,3.33,1.67,0],
+                [75.00,70.00,65.00,60.00,55.00,50.00,45.00,40.00,35.00,30.00,25.00,20.00,15.00,10.00,5.00,0],
             ],
             probCulprit: [25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100]
         }
@@ -37,7 +38,7 @@ let gameStatusComponent = {
     },
     computed: {
         probabilityCulprit() {
-            return this.investigationCount > 15 ? this.probCulprit[this.investigationCount] : 100
+            return this.investigationCount > 15 ? 100 : this.probCulprit[this.investigationCount]
 
             // todo do we need the amax thing anymore?
             return this.probCulprit[this.investigationCount]
@@ -52,12 +53,14 @@ let gameStatusComponent = {
             }
         },
         probabilityInnocent() {
-            let innocent = this.investigationCount > 15 ? this.probInnocent[this.investigationCount] : 0
+            let innocent = this.investigationCount > 15 ? 0 : this.probInnocent[0][this.investigationCount]
 
             // calculate probability of officer reprimand because it depends on probability innocent
             if (this.isOfficer) {
                 let probabilityReprimand = Math.round(this.reviewProbability * 3 * innocent * 10000) / 100
                 this.$emit('update-probability-reprimand', probabilityReprimand)
+
+                return this.probInnocent[1][this.investigationCount]
             }
             return innocent
             // if (this.investigationCount > this.aMax)
@@ -99,7 +102,7 @@ let gameStatusComponent = {
                     <div class="inner">
                         <probability-bar-component
                                 :label="isOfficer ? 'An innocent' : 'If you are innocent'"
-                                :percent="isOfficer ? probabilityInnocent * 3 : probabilityInnocent">
+                                :percent="isOfficer ? probabilityInnocent: probabilityInnocent">
                         </probability-bar-component>
                         <br>
                         <probability-bar-component

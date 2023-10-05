@@ -196,7 +196,6 @@ let officerGameComponent = {
                 // show token
                 this.showToken(tokenNum)
                 // update slot
-                debugger
                 this.updateSlotStatus(slot, true)
             }
         },

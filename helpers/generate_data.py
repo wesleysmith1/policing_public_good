@@ -55,10 +55,10 @@ class GenerateCsv:
             tf = time.TimeFormatter(self.game_data[0].event_time)
         except:
             tf = None
+            
+        starting_balances=self.meta_data['starting_balances']
 
-        starting_balances=self.meta_data.starting_balances
-
-        players = self.init_players(session_start, steal_starts, player_ids_in_session, tf, starting_balances)
+        players = self.init_players(session_start, steal_starts, player_ids_in_session, starting_balances, tf)
 
         for event in self.game_data:
             # get JSON data
@@ -463,6 +463,7 @@ class GenerateCsv:
             'Group_ID',
             'Group_BonusAmount',
             'Group_IncomeDistribution',
+            'Player_Starting_Balances',
             'Player_ID',
             'Participant_ID',  # participant.id_in_session
             'Player_Role',
@@ -504,6 +505,7 @@ class GenerateCsv:
             meta_data['group_id'],
             meta_data['officer_bonus'],
             meta_data['income_distribution'],  # group_income_distribution
+            meta_data['starting_balances'],
             pid,
             id_in_session,  # participant_id
             1 if pid > 1 else 0,
@@ -531,10 +533,10 @@ class GenerateCsv:
         return x
 
 
-    def init_players(self, start, steal_starts, player_ids_in_session, tf):
+    def init_players(self, start, steal_starts, player_ids_in_session, starting_balances, tf):
         x = {}
         for i in range(1, self.C.PLAYERS_PER_GROUP+1):
-            x[i] = CPlayer(start, i, steal_starts[i-1], player_ids_in_session[i-1], tf, self.C)
+            x[i] = CPlayer(start, i, steal_starts[i-1], player_ids_in_session[i-1], starting_balances[i-1], tf, self.C)
 
         return x
 
@@ -593,16 +595,13 @@ class StealToken:
 
 
 class CPlayer:
-    def __init__(self, start, id, steal_start, id_in_session, time_formatter, C):
+    def __init__(self, start, id, steal_start, id_in_session, starting_balance, time_formatter, C):
         self.id_in_session = id_in_session
         self.last_updated = start
         self.player_id = id
         self.C = C
-
-        if self.player_id == 1:
-            self.balance = self.C.officer_start_balance
-        else:
-            self.balance = self.C.civilian_start_balance
+        self.starting_balance = starting_balance
+        self.balance = self.starting_balance
 
         self.roi = 0
         self.t_formatter = time_formatter

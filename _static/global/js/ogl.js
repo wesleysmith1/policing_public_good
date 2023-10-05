@@ -149,7 +149,7 @@ let oglComponent = {
         `
       <div>     
 
-        <h2 style="text-align: center">Your points: {{startingBalance}}</h2>
+        <h2 style="text-align: center">Initial balance: {{startingBalance}}</h2>
 
         <div style="display: flex; justify-content: space-around">
             <your-quantity-chart :player-quantity="playerQuantity" :omega="omega"></your-quantity-chart>

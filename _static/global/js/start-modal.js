@@ -6,6 +6,8 @@ let startModalComponent = {
         startObject: Object,
         isOfficer: Boolean,
         groupPlayerId: Number,
+        mechanismObject: Object,
+        roundNumber: Number,
     },
     methods: {
         open: function() {
@@ -43,6 +45,67 @@ let startModalComponent = {
             <!--Modal content-->
             <div class="modal-content start-modal">
                 <div class="start-modal-content">
+                    <div v-if="mechanismObject && roundNumber > 2">
+                        <h4 style="text-align:center;">Market Over</h4>
+                        <p style="text-align: center;">Summary</p>
+                        <div class="list-group" style="width: 450px; margin: auto;">
+                            <div v-if="mechanismObject.your_quantity != null && !isOfficer" class="list-group-item list-group-item-primary">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <div><strong>Your quantity:</strong></div>
+                                    <div><strong>{{mechanismObject.your_quantity}}</strong></div>
+                                </div>
+                            </div>
+                            <div v-if="mechanismObject.your_cost != null && !isOfficer" class="list-group-item list-group-item-primary">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <div><strong>Your cost:</strong></div>
+                                    <div><strong>{{ mechanismObject.your_cost.toFixed(0) }}</strong></div>
+                                </div>
+                            </div>
+                            <div v-if="mechanismObject.total_quantity != null" class="list-group-item list-group-item-primary">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <div><strong>Total quantity:</strong></div>
+                                    <div><strong>{{ mechanismObject.total_quantity.toFixed(0) }}</strong></div>
+                                </div>
+                            </div> 
+                        </div>
+                        <br>
+                        <div class="list-group" style="width: 450px; margin: auto;">
+                            <div v-if="mechanismObject.starting_points != null && !isOfficer" class="list-group-item list-group-item-secondary">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <div><strong>Your starting balance:</strong></div>
+                                    <div><strong>{{ mechanismObject.starting_points}}</strong></div>
+                                </div>
+                            </div>
+                            <div v-if="mechanismObject.participant_rebate & !mechanismObject.treatment == 'OGL' && !isOfficer" class="list-group-item list-group-item-secondary">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <div><strong>Your rebate:</strong></div>
+                                    <div><strong>{{ mechanismObject.participant_rebate }}</strong></div>
+                                </div>
+                            </div>
+                            <div v-if="mechanismObject.your_cost != null && !isOfficer" class="list-group-item list-group-item-secondary">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <div v-if="mechanismObject.participant"><strong>Your cost:</strong></div>
+                                    <div v-else><strong>Your tax:</strong></div>
+                                    <div><strong>{{ mechanismObject.your_cost.toFixed(0) }}</strong></div>
+                                </div>
+                            </div>
+                            <div v-if="mechanismObject.total_quantity != null && !isOfficer" class="list-group-item list-group-item-secondary">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <div><strong>Total quantity:</strong></div>
+                                    <div><strong>{{ mechanismObject.total_quantity.toFixed(0) }}</strong></div>
+                                </div>
+                            </div>
+                            <div v-if="mechanismObject.balance != null" class="list-group-item list-group-item-secondary">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <div><strong>Current balance:</strong></div>
+                                    <div><strong>{{ mechanismObject.balance.toFixed(0) }}</strong></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <br>
+
                     <div v-if="startObject">
                         <h4 style="text-align:center;">Round information</h4>
                         <br>

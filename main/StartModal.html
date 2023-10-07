@@ -1,5 +1,10 @@
 {{ block title }}{{ endblock }}
+
 {{ block content }}
+
+<script src="{% static 'global/js/grain-img.js' %}"></script>
+<script src="{% static 'global/js/start-modal.js' %}"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 
 <style>
     .otree-timer {
@@ -7,19 +12,16 @@
     }
 </style>
 
-<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-
-<script src="{% static 'global/js/grain-img.js' %}"></script>
-<script src="{% static 'global/js/start-modal.js' %}"></script>
-
 <link rel="stylesheet" type="text/css" href="{% static 'global/styles/modal.css' %}">
 
 <div id="app">
     <start-modal-component
         ref="infomodal"
         :start-object="infoModalObject"
+        :mechanism-object="mechanismObject"
         :is-officer="isOfficer"
         :group-player-id="groupPlayerId"
+        :round-number="roundNumber"
     ></start-modal-component>
 </div>
 
@@ -36,13 +38,17 @@
         },
         data() {
             return {
-                infoModalObject: {{start_modal_object}},
+                infoModalObject: {{start_modal_object | json}},
+                mechanismObject: {{mechanism_object | json}},
                 isOfficer: {{player.id_in_group}} == 1,
                 groupPlayerId: {{player.id_in_group}},
+                roundNumber: {{player.round_number}},
             }
         }, 
         mounted() {
             this.openInfoModal();
+            console.log(this.infoModalObject)
+            console.log(this.mechanismObject)
         },
         methods: {
             openInfoModal: function() {

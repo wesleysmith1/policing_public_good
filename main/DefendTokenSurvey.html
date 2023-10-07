@@ -1,0 +1,274 @@
+{{ block title }}
+{{ endblock }}
+
+{{ block content }}
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+
+<script src="{% static 'global/js/total-quantity-chart.js' %}"></script>
+<script src="{% static 'global/js/your-quantity-chart.js' %}"></script>
+<script src="{% static 'global/js/your-cost-chart.js' %}"></script>
+<script src="{% static 'global/js/ogl.js' %}"></script>
+
+<style>
+    .slidecontainer {
+        width: 100%;
+    }
+
+    .slider {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 15px;
+        border-radius: 5px;
+        background: #d3d3d3;
+        outline: none;
+        opacity: 0.7;
+        -webkit-transition: .2s;
+        transition: opacity .2s;
+    }
+
+    .slider:hover {
+        opacity: 1;
+    }
+
+    .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        background: #04AA6D;
+        cursor: pointer;
+    }
+
+    .slider::-moz-range-thumb {
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        background: #04AA6D;
+        cursor: pointer;
+    }
+
+    svg#interactiveBar {
+        display: block;
+    }
+    svg#costBar {
+        display: block;
+    }
+
+    /* =======================d3 styles============================ */
+
+    .axisRed line{
+        stroke: #FF4949;
+    }
+
+    .axisRed path{
+        stroke: #FF4949;
+    }
+
+    .axisRed text{
+        fill: #FF4949;
+    }
+
+    .axisBlue line{
+        stroke: #0F4392;
+    }
+
+    .axisBlue path{
+        stroke: #0F4392;
+    }
+
+    .axisBlue text{
+        fill: #0F4392;
+    }
+
+    g {
+        font-size: 16px;
+    }
+</style>
+
+<div class="otree-body container">
+
+        <div id="app" style="visibility: hidden;">
+
+            <div v-if="playerSelected">
+                <br>
+
+                <h2 v-if="tutorial" style="text-align: center;">
+                    <span v-if="treatment != 'OGL'">
+                        Participant <span v-if="idInGroup == 1 | idInGroup == 3">1</span><span v-else>2</span>
+                    </span>
+                    <span v-else>
+                        Participant ${ idInGroup }
+                    </span>
+                </h2>
+
+                <ogl-component
+                    :player-id="playerId"   
+                    :payment-max="paymentMax"
+                    :provisional-totals="provisionalTotals"
+                    :total-quantity="totalQuantity"
+                    :player-quantity="playerQuantity"
+                    :group-quantities="groupQuantities"
+                    :gamma="gamma"
+                    :omega="omega"
+                    :constants="constants"
+                    :id-in-group="idInGroup"
+                    :starting-balance="startingBalance"
+                    :plus="plus"
+                    :minus="minus"
+                    :your-cost="yourCost"
+                    @update="update"
+                ></ogl-component>
+
+            </div>
+            <div v-else>
+                <div>
+                    <h3 v-if="idInGroup == 1">
+                        Please wait for the round to begin.
+                    </h3>
+                    <h3 v-else>
+                        You were not selected for the survey this round. Please wait patiently for the results.
+                    </h3>
+                </div>
+            </div>
+        </div>
+</div>
+<script>
+    
+    const { createApp } = Vue
+    
+    const app = createApp({
+        components: {
+            'ogl-component': oglComponent,
+        },
+        compilerOptions: {
+            delimiters: ["${", "}"]
+        },
+        data() {
+            return {
+                playerId: {{player.id}},
+                groupId: {{group.id}},
+                idInGroup: {{player.id_in_group}},
+                tokenChoices: {{dt_range}},
+                paymentMax: {{dt_payment_max}},
+                socket: null,
+                costSocket: null,
+                playerSelected: '{{selected}}' === 'True',
+                provisionalTotals: {},
+                provisionalCosts: {},
+
+                totalQuantity: 0,
+                groupQuantities: {},
+                playerQuantity: {{player.quantity}},
+
+                gamma: {{gamma}},
+                omega: {{omega}},
+                title: '',
+
+                constants: {{constants  |json}},
+
+                startingBalance: {{player.balance}},
+
+                plus: null,
+                minus: null,
+                yourCost: 0,
+                tutorial: {{player.round_number}} == 1,
+                treatment: '{{C.treatment}}',
+
+                costSocketReconnectCount: 0,
+
+            }
+
+        },
+        mounted() {
+            this.setTitle()
+            document.getElementById("app").style.visibility = "visible"
+
+            // this is supposed to initialize the values of all players when the page loads... error: liveSend not defined
+            // if (this.playerSelected)
+            //     this.update(this.playerQuantity)
+
+            // dont open channels for non participants
+            if (!this.playerSelected) {
+                return
+            }
+            
+            this.setTitle();
+
+            setTimeout(() => {this.sendCalculateCost()}, 1000)
+        },
+        created() {
+        },
+        methods: {
+            updateTotalQuantity: function() {
+                let temp = 0
+                for (key in this.groupQuantities) {
+                    temp += this.groupQuantities[key]
+                }
+                this.totalQuantity = temp
+            },
+            sendCalculateCost() {
+                let data = {
+                    'group_id': this.groupId,
+                    'player_id': this.playerId,
+                    'quantities': this.quantities,
+                    'calc_type': 'plus',
+                }
+                // this.costSocket.send(JSON.stringify(data))
+                liveSend({'cost': data})
+            },
+            update: function(x) {
+                this.send({'quantity': x})
+
+            },
+            send: function(data) {
+                data.player_id = this.playerId;
+                data.group_id = this.groupId;
+                // this.socket.send(JSON.stringify(data));
+                liveSend({'quantity': data})
+            },
+            setTitle: function(){
+                this.title = "Determining the number of officer tokens for the next round."
+            },
+            receive(data) {
+                console.log('data received', data)
+
+                if (data.type == 'quantity_update') {
+                    console.log('quantity update')
+
+                    this.sendCalculateCost()
+            
+                    if (data.player_update) {
+                        for (playerId in data.player_update) {
+
+                            this.groupQuantities[playerId] = data.player_update[playerId]
+    
+                            this.updateTotalQuantity()
+    
+                            if (this.playerId == playerId) {
+                                this.playerQuantity = data.player_update[playerId]
+                            }
+                        }
+                    }
+
+                } else if (data.type == 'cost_update') {
+                    console.log('cost_update')
+                    this.plus = data.plus
+                    this.minus = data.minus
+                    this.yourCost = data.cost
+                    console.log(data)
+                }
+            }
+        },
+    }).mount('#app');
+
+    function liveRecv(data) {
+        app.receive(data)
+    }
+
+</script>
+
+{{ endblock }}

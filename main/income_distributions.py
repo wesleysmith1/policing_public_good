@@ -25,7 +25,7 @@ class IncomeDistributions:
     @classmethod
     def format_round(cls, round_num):
         """round number is offset by tutorial and practice rounds"""
-        return round_num - 3
+        return round_num - 4
 
     @classmethod
     def get_group_income_keys(cls, config, round_num):

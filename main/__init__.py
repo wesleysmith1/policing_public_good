@@ -19,7 +19,7 @@ class C(BaseConstants):
     NUM_ROUNDS = 13
 
     """Number of defend tokens officer starts with"""
-    total_tutorial_defend_tokens = 20 #8
+    total_tutorial_defend_tokens = 8
 
     """Fine when convicted"""
     civilian_fine_amount = 120
@@ -741,7 +741,7 @@ class DefendTokenSurvey(Page):
         if player.round_number == 1:
             return None
         else:
-            return 9000 #45
+            return 45
 
     @staticmethod
     def vars_for_template(player: Player):

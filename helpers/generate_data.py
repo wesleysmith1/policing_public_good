@@ -449,7 +449,7 @@ class GenerateCsv:
             with f:
                 writer = csv.writer(f)
                 # write header
-                if round_number == 3:
+                if round_number == 4:
                     writer.writerow(self.csv_header())
                 for row in players[i].rows:
                     writer.writerow(self.format_row(i, row, round_start, self.meta_data, players[i].id_in_session))

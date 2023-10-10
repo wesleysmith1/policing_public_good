@@ -54,6 +54,8 @@
 .officer-units .defend-location {
 }
 
-#overflow-container {
-    display: flex;
+.overflow-slot {
+    position: absolute;
+    top: 0;
+    left: 0;
 }

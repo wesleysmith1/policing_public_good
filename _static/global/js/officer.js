@@ -25,7 +25,7 @@ let officerGameComponent = {
             overflowDefendTokens: [],
             showOverflow: true,
             minimumMovement: .01,
-            defendTokenDisplayMax: 9,
+            defendTokenDisplayMax: 8,
         }
     },
     created: function () {

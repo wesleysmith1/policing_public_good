@@ -48,7 +48,7 @@ let startModalComponent = {
                     <div v-if="mechanismObject && roundNumber > 2">
                         <h4 style="text-align:center;">Market Over</h4>
                         <p style="text-align: center;">Summary</p>
-                        <div class="list-group" style="width: 450px; margin: auto;">
+                        <div v-if="mechanismObject.participant" class="list-group" style="width: 450px; margin: auto;">
                             <div v-if="mechanismObject.your_quantity != null && !isOfficer" class="list-group-item list-group-item-primary">
                                 <div style="display: flex; justify-content: space-between;">
                                     <div><strong>Your quantity:</strong></div>
@@ -83,10 +83,16 @@ let startModalComponent = {
                                 </div>
                             </div>
                             <div v-if="mechanismObject.your_cost != null && !isOfficer" class="list-group-item list-group-item-secondary">
-                                <div style="display: flex; justify-content: space-between;">
-                                    <div v-if="mechanismObject.participant"><strong>Your cost:</strong></div>
-                                    <div v-else><strong>Your tax:</strong></div>
-                                    <div><strong>{{ mechanismObject.your_cost.toFixed(0) }}</strong></div>
+                                <div>
+                                    <div v-if="mechanismObject.participant" style="display: flex; justify-content: space-between;">
+                                        <div><strong>Your cost:</strong></div>
+                                        <div><strong>{{ mechanismObject.your_cost.toFixed(0) }}</strong></div>
+                                    </div>
+                                    <div v-else style="display: flex; justify-content: space-between;">
+                                        <div><strong>Your tax:</strong></div>
+                                        <div><strong>{{ mechanismObject.nonparticipant_tax.toFixed(0) }}</strong></div>
+                                    </div>
+                                    
                                 </div>
                             </div>
                             <div v-if="mechanismObject.total_quantity != null && !isOfficer" class="list-group-item list-group-item-secondary">

@@ -555,7 +555,7 @@ class GenerateCsv:
         for num, value in defend_dict.items():
             result += value
             # add separator
-            if num != 9:
+            if num != len(defend_dict) - 1:
                 result += ';'
 
         result += "]"

@@ -4,7 +4,7 @@ from random import randrange
 import random
 import numpy as np
 
-from mechanisms.mechanism import calculate_cost, calculate_costs
+from mechanisms.mechanism import calculate_cost, calculate_costs, calculate_nonparticipant_tax
 
 
 doc = """
@@ -97,7 +97,6 @@ class C(BaseConstants):
 
     dt_range = 10
     dt_payment_max = 10
-    big_n = 4
 
     # ========================================
 
@@ -233,7 +232,7 @@ class Group(BaseGroup):
         group_id = officer_participant.vars['group_id']
 
         config_key = self.session.config['civilian_income_config']
-        incomes = group.session.vars['incomes']
+        incomes = self.session.vars['incomes']
 
         meta_data = dict(
             round_number=self.subsession.round_number,
@@ -278,7 +277,7 @@ class Player(BasePlayer):
     quantity = models.IntegerField(initial=0)
     your_cost = models.FloatField(initial=0)
     mechanism_participant = models.BooleanField(initial=False)
-    # nonparticipant_tax = models.FloatField(initial=0)
+    nonparticipant_tax = models.FloatField(initial=0)
     participant_rebate = models.IntegerField(initial=0)
     # ============================================
 
@@ -387,7 +386,7 @@ class MechanismInput(ExtraModel):
                     # "utilities", 
                     # "individual_commodities", 
                     # "participant_rebates", 
-                    # "nonparticipant_taxes", 
+                    "nonparticipant_taxes", 
                     "created", 
                     "treatment",
                     "gamma",
@@ -409,7 +408,7 @@ class MechanismInput(ExtraModel):
             # list(uo['utility']), 
             # list(uo['quantity_ind_commodity']), 
             # list(uo['participant_rebate']), 
-            # list(uo['nonparticipant_tax']), 
+            list(uo['nonparticipant_tax']), 
             datetime.datetime.fromtimestamp(self.created).strftime('%d/%m/%Y %H:%M:%S'), 
             C.treatment,
             C.gamma,
@@ -468,8 +467,9 @@ def creating_session(subsession: Subsession):
     # get configurations from settings.py
     config_key = subsession.session.config['civilian_income_config']
 
-    if round_number == 1:
-        group.session.vars['incomes'] = random.shuffle([10, 15, 20, 25, 30])
+    if subsession.round_number == 1:
+        subsession.session.vars['incomes'] = [10, 15, 20, 25, 30]
+        random.shuffle(subsession.session.vars['incomes'])
     
     # this code is the terrible way that officer income is determined for session
     if subsession.round_number == 1:
@@ -507,7 +507,7 @@ def creating_session(subsession: Subsession):
                     # set harvest amount for civilians
                     if p.id_in_group > 1:
                         income_index = p.id_in_group-2
-                        p.income = round_incomes[income_index]
+                        p.income = subsession.session.vars['incomes'][income_index]
                     else:
                         # is officer
                         p.income = p.participant.vars['officer_bonus']
@@ -666,15 +666,10 @@ class DefendTokenSurvey(Page):
                 # non tutorial code
                 players = [ p for p in player.group.get_players() if not p.is_officer()] # this is ordered by id_in_group
 
-                print(f"PLYERS {players}")
                 quantities = [p.quantity for p in players if not p.is_officer()]
-
-                print(f"QUANTITIES {quantities}")
 
                 participants = [p for p in player.group.get_players() if p.mechanism_participant and not p.is_officer()]
                 n_id = [p.id_in_group for p in participants]
-
-                print(f"N_ID {n_id}")
 
                 quantity = player.quantity
 
@@ -685,7 +680,6 @@ class DefendTokenSurvey(Page):
                     plus_quantity = quantity + 1
                     plus_quantities = quantities.copy()
                     plus_quantities[player.id_in_group-2] = plus_quantity
-                    print(f"PLUS {plus_quantities}, {plus_quantity}, {n_id}")
                     plus = calculate_cost(
                             C.N, 
                             C.gamma, 
@@ -695,14 +689,11 @@ class DefendTokenSurvey(Page):
                             n_id,
                             mechanism=C.treatment
                         )
-                    
-                    print(f"PLUS cost {plus}")
-                
+                                    
                 if quantity > 0:
                     minus_quantity = quantity - 1
                     minus_quantities = quantities.copy()
                     minus_quantities[player.id_in_group-2] = minus_quantity
-                    print(f"MINUS  {minus_quantities}, {minus_quantity}, {n_id}")
                     minus = calculate_cost(
                             C.N, 
                             C.gamma, 
@@ -713,12 +704,7 @@ class DefendTokenSurvey(Page):
                             mechanism=C.treatment
                         )
                     
-                    print(f"MINUS cost {minus}")
-
-                print(f"COST {quantities}, {quantity}, {n_id}")
                 cost = calculate_cost(C.N, C.gamma, quantities, quantity, C.q, n_id, mechanism=C.treatment)
-
-                print(f"COST {cost}")
 
                 data = {'type': 'cost_update',
                         'cost': cost,
@@ -824,14 +810,25 @@ class DefendTokenWaitPage(WaitPage):
         # else:
 
         costs = calculate_costs(C.N, C.gamma, quantities, C.q, mechanism=C.treatment)
-
+        nonparticipant_tax = calculate_nonparticipant_tax(
+            C.N, 
+            C.q, 
+            C.gamma, 
+            quantities, 
+            costs,
+            r=0, 
+            n_id = [p.id_in_group for p in group.get_players() if p.mechanism_participant and not p.is_officer()],
+            mechanism = C.treatment
+        )
+        
         for player in participants:
             player.your_cost = costs[player.id_in_group-2]
             player.balance -= player.your_cost
 
         for player in nonparticipants:
+            player.nonparticipant_tax = abs(nonparticipant_tax[player.id_in_group-2])
             player.your_cost = costs[player.id_in_group-2]
-            player.balance -= player.your_cost
+            player.balance = player.balance - player.nonparticipant_tax
 
         # ==================================== end if ======================================
 
@@ -860,6 +857,7 @@ class DefendTokenWaitPage(WaitPage):
                     costs=costs,
                     group_quantities=quantities,
                     starting_points=[p.starting_points for p in group.get_players() if not p.is_officer()],
+                    nonparticipant_tax=nonparticipant_tax,
                 )
 
                 if group.round_number != 1:
@@ -941,7 +939,7 @@ class Main(Page):
                 officer_reprimand=player.group.officer_reprimand_amount,
             )
         else:
-            incomes = group.session.vars['incomes']
+            incomes = player.group.session.vars['incomes']
             incomes_dict = dict(zip(civilian_ids, incomes))
             sorted(incomes_dict.values())
 
@@ -1549,7 +1547,7 @@ class StartModal(Page):
     @staticmethod
     def get_timeout_seconds(player: Player):
         """Players must be advanced past the practice round"""
-        return None if player.round_number == 3 else 15
+        return None if player.round_number == 3 else 1000 #15
     
     @staticmethod
     def vars_for_template(player: Player):
@@ -1573,6 +1571,7 @@ class StartModal(Page):
             balance=player.balance,
             participant=player.mechanism_participant,
             starting_points=player.starting_points,
+            nonparticipant_tax=player.nonparticipant_tax
         )
         
         # income configuration number
@@ -1598,7 +1597,7 @@ class StartModal(Page):
                 officer_reprimand=player.group.officer_reprimand_amount,
             )
         else:
-            incomes = group.session.vars['incomes']
+            incomes = player.group.session.vars['incomes']
             incomes_dict = dict(zip(civilian_ids, incomes))
             sorted(incomes_dict.values())
 
@@ -1684,7 +1683,7 @@ class Intermission(Page):
     def vars_for_template(player: Player):
 
         config_key = player.session.config['civilian_income_config']
-        group_incomes = group.session.vars['incomes']
+        group_incomes = player.group.session.vars['incomes']
 
         if player.round_number < 3:  # tutorial or practice round
 

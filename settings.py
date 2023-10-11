@@ -41,7 +41,7 @@ SESSION_CONFIG_DEFAULTS = dict(
 )
 
 PARTICIPANT_FIELDS = ['officer_bonus', 'group_id', 'balances', 'steal_start']
-SESSION_FIELDS = ['session_start', 'session_date',]
+SESSION_FIELDS = ['session_start', 'session_date', 'incomes']
 
 # ISO-639 code
 # for example: de, fr, ja, ko, zh-hans

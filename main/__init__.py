@@ -1,9 +1,9 @@
 from otree.api import *
 import json, math, time, datetime, operator, csv
 from random import randrange
+import random
 import numpy as np
 
-from main.income_distributions import IncomeDistributions
 from mechanisms.mechanism import calculate_cost, calculate_costs
 
 
@@ -34,7 +34,7 @@ class C(BaseConstants):
     m = 200
     h = 800
     # treatment variables including tutorial
-    officer_reprimand_amount = [l,l,l,l,l,l,l,l,m,m,m,m,m]
+    officer_reprimand_amount = [l,l,l,l,l,l,l,l,h,h,h,h,h]
 
     """Officer income (bonus). One for each group"""
     officer_income = 50
@@ -102,25 +102,21 @@ class C(BaseConstants):
     # ========================================
 
     # treatment = "OGL"
-    # N = 4
-    # n = 4
+    # N = 5
+    # n = 5
 
     treatment = "MGL"
-    N = 4
+    N = 5
     n = 2
-
-    # treatment = "MPT"
-    # N = 4
-    # n = 2
 
     # =========================================
 
-    q = 400
+    q = 250
     omega = 15 # max tokens
     gamma = 15
     r = 0
 
-    balances = [1400, 1400, 1400, 1400, 1400, 1400]
+    balances = [1700, 1700, 1700, 1700, 1700, 1700]
 
     # participants that are selected to participate in each round
     sampling_matrix = [
@@ -237,7 +233,7 @@ class Group(BaseGroup):
         group_id = officer_participant.vars['group_id']
 
         config_key = self.session.config['civilian_income_config']
-        incomes = IncomeDistributions.get_group_income_distribution(config_key, self.round_number)
+        incomes = group.session.vars['incomes']
 
         meta_data = dict(
             round_number=self.subsession.round_number,
@@ -472,7 +468,8 @@ def creating_session(subsession: Subsession):
     # get configurations from settings.py
     config_key = subsession.session.config['civilian_income_config']
 
-    round_incomes = IncomeDistributions.get_group_income_distribution(config_key, subsession.round_number)
+    if round_number == 1:
+        group.session.vars['incomes'] = random.shuffle([10, 15, 20, 25, 30])
     
     # this code is the terrible way that officer income is determined for session
     if subsession.round_number == 1:
@@ -944,7 +941,7 @@ class Main(Page):
                 officer_reprimand=player.group.officer_reprimand_amount,
             )
         else:
-            incomes = IncomeDistributions.get_group_income_distribution(config_key, player.round_number)
+            incomes = group.session.vars['incomes']
             incomes_dict = dict(zip(civilian_ids, incomes))
             sorted(incomes_dict.values())
 
@@ -1601,7 +1598,7 @@ class StartModal(Page):
                 officer_reprimand=player.group.officer_reprimand_amount,
             )
         else:
-            incomes = IncomeDistributions.get_group_income_distribution(config_key, player.round_number)
+            incomes = group.session.vars['incomes']
             incomes_dict = dict(zip(civilian_ids, incomes))
             sorted(incomes_dict.values())
 
@@ -1687,7 +1684,7 @@ class Intermission(Page):
     def vars_for_template(player: Player):
 
         config_key = player.session.config['civilian_income_config']
-        group_incomes = IncomeDistributions.get_group_income_distribution(config_key, player.round_number)
+        group_incomes = group.session.vars['incomes']
 
         if player.round_number < 3:  # tutorial or practice round
 

@@ -808,8 +808,10 @@ class DefendTokenWaitPage(WaitPage):
         #             player.your_cost = costs[player.id_in_group-2]
         #             player.participant_rebate = C.r
         # else:
+        n_id = [p.id_in_group for p in group.get_players() if p.mechanism_participant and not p.is_officer()]
 
-        costs = calculate_costs(C.N, C.gamma, quantities, C.q, mechanism=C.treatment)
+
+        costs = calculate_costs(C.N, C.gamma, quantities, C.q, n_id=n_id, mechanism=C.treatment)
         nonparticipant_tax = calculate_nonparticipant_tax(
             C.N, 
             C.q, 
@@ -817,17 +819,17 @@ class DefendTokenWaitPage(WaitPage):
             quantities, 
             costs,
             r=0, 
-            n_id = [p.id_in_group for p in group.get_players() if p.mechanism_participant and not p.is_officer()],
+            n_id=n_id,
             mechanism = C.treatment
         )
-        
+                
         for player in participants:
-            player.your_cost = costs[player.id_in_group-2]
+            player.your_cost = float(costs[player.id_in_group-2])
             player.balance -= player.your_cost
 
         for player in nonparticipants:
             player.nonparticipant_tax = abs(nonparticipant_tax[player.id_in_group-2])
-            player.your_cost = costs[player.id_in_group-2]
+            player.your_cost = float(costs[player.id_in_group-2])
             player.balance = player.balance - player.nonparticipant_tax
 
         # ==================================== end if ======================================
@@ -850,7 +852,7 @@ class DefendTokenWaitPage(WaitPage):
                 # update group quantities
                 group_quantities[mi.id_in_group-2] = mi.quantity
 
-                costs = calculate_costs(C.N, C.gamma, quantities, C.q, mechanism=C.treatment)
+                costs = calculate_costs(C.N, C.gamma, quantities, C.q, n_id=n_id, mechanism=C.treatment)
 
                 csv_data = dict(
                     n_id=n_id,
@@ -1547,7 +1549,7 @@ class StartModal(Page):
     @staticmethod
     def get_timeout_seconds(player: Player):
         """Players must be advanced past the practice round"""
-        return None if player.round_number == 3 else 1000 #15
+        return None if player.round_number == 3 else 15
     
     @staticmethod
     def vars_for_template(player: Player):

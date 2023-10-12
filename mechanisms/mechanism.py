@@ -42,24 +42,29 @@ def calculate_theta(E, e, gam, n):
     
     return theta
 
-def calculate_costs(N, gam, E, qq, mechanism="OGL", r=0):
+def calculate_costs(N, gam, E, qq, n_id=np.array([1, 3]), mechanism="OGL", r=0):
     E = np.array(E)
     # n = len(E)
     n = 5 if mechanism == "OGL" else 2
     cost_baseshare = qq/N*sum(E) - r
     cost_theta = np.array([])
-            
-    if mechanism == 'MPT':
-        cost = cost_baseshare
-        return [cost for i in range(n)]
-    elif mechanism == 'MGL':        
+
+    em = []
+    for id in n_id:
+        em.append(E[id-2])
+    E = em
+
+    if mechanism == 'MGL':
         cost_varpenalty = gam/2*(n/(n-1))*(E-mean(E))**2
-        return cost_baseshare + cost_varpenalty
+
+        participant_costs = np.repeat( 0, repeats = N)
+        participant_costs[[ i-2 for i in n_id]] = cost_baseshare + cost_varpenalty
+        return participant_costs
     elif mechanism == 'OGL':
         cost_varpenalty = gam/2*(n/(n-1))*(E-mean(E))**2
-                
+
         cost_theta = np.array(calculate_thetas(E, gam, n))
-            
+
         return cost_baseshare + cost_varpenalty - cost_theta
 
 
@@ -80,7 +85,7 @@ def calculate_cost(N, gam, E, e, qq, n_id, mechanism="OGL", r=0):
     E = em
 
     # n = len(E)
-    n = 4 if mechanism == "OGL" else 2
+    n = 5 if mechanism == "OGL" else 2
     cost_baseshare = qq/N*sum(E) - r
     cost_theta = np.array([])
     

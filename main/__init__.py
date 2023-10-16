@@ -77,19 +77,19 @@ class C(BaseConstants):
     calculated_probabilities = [
         (.2500, .25, 0), # 0 defense tokens tokens
         (.2333, .30, 0), # 1 defense ...
-        (.2167, .35, 0), # 2 ...
+        (.2166, .35, 0), # 2 ...
         (.2000, .40, 0), # 3 ...
         (.1833, .45, 0), # 4 ...
-        (.1667, .50, 0), # 5 ...
+        (.1666, .50, 0), # 5 ...
         (.1500, .55, 0), # 6 ...
         (.1333, .60, 0), # 7 ...
-        (.1167, .65, 0), # 8 ...
+        (.1166, .65, 0), # 8 ...
         (.1000, .70, 0), # 9 ...
         (.0833, .75, 0), # 10 ...
-        (.0667, .80, 0), # 11 ...
+        (.0666, .80, 0), # 11 ...
         (.0500, .85, 0), # 12 ...
         (.0333, .90, 0), # 13 ...
-        (.0167, .95, 0), # 14 ...
+        (.0166, .95, 0), # 14 ...
         (.0000, 1, 0), # 15 ...
     ]
 
@@ -110,7 +110,7 @@ class C(BaseConstants):
 
     # =========================================
 
-    q = 250
+    q = 400
     omega = 15 # max tokens
     gamma = 15
     r = 0
@@ -1040,7 +1040,7 @@ class Main(Page):
                     player.decrease_roi(event_time, True)
                 else:
                     pass
-                player.map = 0
+            player.map = 0
 
             game_data_dict.update({
                 "event_type": "toggle",
@@ -1434,20 +1434,21 @@ class Main(Page):
                 innocent = inter["map"]  # also victim
 
                 # probability no player player convicted
-                probability_none = C.calculated_probabilities[num_investigators][2]
+                probability_none = C.calculated_probabilities[num_investigators if num_investigators < len(C.calculated_probabilities) else 14][2]
 
                 if num_investigators >= C.a_max:
                     innocent_prob = 0
                     # get largest probability since they are all the same after 6 tokens
                     guilty_prob = C.calculated_probabilities[-1][1]
                 else:
-                    innocent_prob = C.calculated_probabilities[num_investigators][0]
+                    innocent_prob = C.calculated_probabilities[num_investigators if num_investigators < len(C.calculated_probabilities) else 14][0]
 
-                    guilty_prob = C.calculated_probabilities[num_investigators][1]
+                    guilty_prob = C.calculated_probabilities[num_investigators if num_investigators < len(C.calculated_probabilities) else 14][1]
 
 
                 # todo: this should be dynamic or documented that it is tied to num_civilians
                 multi = [0, innocent_prob, innocent_prob, innocent_prob, innocent_prob, innocent_prob, probability_none]
+
 
                 # subtract 1 for 0 based index
                 multi[culprit - 1] = guilty_prob

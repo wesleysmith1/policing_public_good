@@ -21,7 +21,7 @@ let gameStatusComponent = {
     data: function () {
         return {
             probInnocent: [
-                [25.00,23.33,21.67,20.00,18.33,16.67,15.00,13.33,11.67,10.00,8.33,6.67,5.00,3.33,1.67,0],
+                [25.00,23.33,21.66,20.00,18.33,16.66,15.00,13.33,11.66,10.00,8.33,6.66,5.00,3.33,1.66,0],
                 [75.00,70.00,65.00,60.00,55.00,50.00,45.00,40.00,35.00,30.00,25.00,20.00,15.00,10.00,5.00,0],
             ],
             probCulprit: [25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100]
@@ -60,7 +60,7 @@ let gameStatusComponent = {
                 let probabilityReprimand = Math.round(this.reviewProbability * 3 * innocent * 10000) / 100
                 this.$emit('update-probability-reprimand', probabilityReprimand)
 
-                return this.probInnocent[1][this.investigationCount]
+                return this.investigationCount > 15 ? 0 : this.probInnocent[1][this.investigationCount]
             }
             return innocent
             // if (this.investigationCount > this.aMax)

@@ -887,7 +887,7 @@ class Main(Page):
 
     @staticmethod
     def get_timeout_seconds(player: Player):
-        return None if player.round_number == 1 else 150
+        return None if player.round_number == 3 else 150
 
     @staticmethod
     def vars_for_template(player: Player):
@@ -1040,7 +1040,7 @@ class Main(Page):
                     player.decrease_roi(event_time, True)
                 else:
                     pass
-            player.map = 0
+                player.map = 0
 
             game_data_dict.update({
                 "event_type": "toggle",

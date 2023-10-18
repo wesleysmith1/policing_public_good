@@ -100,13 +100,13 @@ class C(BaseConstants):
 
     # ========================================
 
-    # treatment = "OGL"
-    # N = 5
-    # n = 5
-
-    treatment = "MGL"
+    treatment = "OGL"
     N = 5
-    n = 2
+    n = 5
+
+    # treatment = "MGL"
+    # N = 5
+    # n = 2
 
     # =========================================
 

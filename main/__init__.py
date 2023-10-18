@@ -115,7 +115,7 @@ class C(BaseConstants):
     gamma = 15
     r = 0
 
-    balances = [1700, 1700, 1700, 1700, 1700, 1700]
+    balances = [2000, 2000, 2000, 2000, 2000, 2000]
 
     # participants that are selected to participate in each round
     sampling_matrix = [
@@ -721,7 +721,7 @@ class DefendTokenSurvey(Page):
 
     @staticmethod
     def get_timeout_seconds(player: Player):
-        if player.round_number == 1:
+        if player.round_number == 3:
             return None
         else:
             return 45
@@ -887,7 +887,7 @@ class Main(Page):
 
     @staticmethod
     def get_timeout_seconds(player: Player):
-        return None if player.round_number == 3 else 150
+        return None if player.round_number == 1 else 150
 
     @staticmethod
     def vars_for_template(player: Player):

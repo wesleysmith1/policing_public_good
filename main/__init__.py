@@ -34,8 +34,8 @@ class C(BaseConstants):
     m = 200
     h = 800
     # treatment variables including tutorial
-    officer_reprimand_amount = [l,l,l,l,l,l,l,l,l,l,l,l,l]
-    # officer_reprimand_amount = [h,h,h,h,h,h,h,h,h,h,h,h,h]
+    # officer_reprimand_amount = [l,l,l,l,l,l,l,l,l,l,l,l,l]
+    officer_reprimand_amount = [h,h,h,h,h,h,h,h,h,h,h,h,h]
 
     """Officer income (bonus). One for each group"""
     officer_income = 50
@@ -72,7 +72,7 @@ class C(BaseConstants):
     """
     steal_token_slots = 20
 
-        # probability calculations
+    # probability calculations
     # key=#probabilities -> innocent, culprit, prob nobody
     # the index
     calculated_probabilities = [

@@ -34,7 +34,8 @@ class C(BaseConstants):
     m = 200
     h = 800
     # treatment variables including tutorial
-    officer_reprimand_amount = [l,l,l,l,l,l,l,l,h,h,h,h,h]
+    officer_reprimand_amount = [l,l,l,l,l,l,l,l,l,l,l,l,l]
+    # officer_reprimand_amount = [h,h,h,h,h,h,h,h,h,h,h,h,h]
 
     """Officer income (bonus). One for each group"""
     officer_income = 50
@@ -1677,7 +1678,7 @@ class Intermission(Page):
     @staticmethod
     def is_displayed(player: Player):
 
-        if player.round_number == 2 or player.round_number == 4 or player.round_number == 9:
+        if player.round_number == 2 or player.round_number == 4:
             return True
         else:
             return False

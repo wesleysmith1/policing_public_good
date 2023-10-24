@@ -34,8 +34,8 @@ class C(BaseConstants):
     m = 200
     h = 800
     # treatment variables including tutorial
-    officer_reprimand_amount = [l,l,l,l,l,l,l,l,l,l,l,l,l]
-    # officer_reprimand_amount = [h,h,h,h,h,h,h,h,h,h,h,h,h]
+    # officer_reprimand_amount = [l,l,l,l,l,l,l,l,l,l,l,l,l]
+    officer_reprimand_amount = [h,h,h,h,h,h,h,h,h,h,h,h,h]
 
     """Officer income (bonus). One for each group"""
     officer_income = 50
@@ -101,13 +101,13 @@ class C(BaseConstants):
 
     # ========================================
 
-    # treatment = "OGL"
-    # N = 5
-    # n = 5
-
-    treatment = "MGL"
+    treatment = "OGL"
     N = 5
-    n = 2
+    n = 5
+
+    # treatment = "MGL"
+    # N = 5
+    # n = 2
 
     # =========================================
 
